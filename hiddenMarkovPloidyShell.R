@@ -52,20 +52,22 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
            minInd = 1,#min ind having reads #also in ANGSD, better to have it here as well
            chosenInd = NA,#which Individual to consider (one at the time for now)
            #Must implement option for: all ind together or one at the time.
-           isSims = FALSE, #data is simulated. if TRUE fileList will also refer to file(s) with true ploidies
-           alpha = NULL, #alpha parameters comma separated
-           beta = NULL #beta parameters comma separated
+           #isSims = FALSE, #data is simulated. if TRUE fileList will also refer to file(s) with true ploidies
+           alpha = NA, #alpha parameters comma separated
+           beta = NA, #beta parameters comma separated
+           quantileTrim ="0,1"#quantiles for trimming
            )
 
 #if no argument aree given prints the need arguments and the optional ones with default
-des<-list(fileList="list of .genolike and phat.mafs and eventual .windows files",
-          wind="Size of window for depth and genotype likelihoods (NA)",
-          minInd="min Nr of individuals per locus having data (1)",
-          maxPloidy="Maximum ploidy allowed (6)", #have to implement a case where ploidies are chosen
-          chosenInd = "which Individual to consider. one at the time for now. (NA=all)",
-          isSims="data is simulated using the simulation script (FALSE)",
-          alpha ="alpha parameters comma separated",
-          beta="beta parameters comma separated"
+des<-list(fileList="[string] list of .genolike and phat.mafs and eventual .windows files",
+          wind="[integer] Size of window for depth and genotype likelihoods (NA)",
+          minInd="[integer] min Nr of individuals per locus having data (1)",
+          maxPloidy="[integer] Maximum ploidy allowed (6)", #have to implement case where ploidies are chosen
+          chosenInd ="[integers] which Individual to consider. one at the time for now. (NA=all)",
+          isSims="[bool] data is simulated using the simulation script (FALSE)",
+          alpha ="[numerics] alpha parameters comma separated (NA, read from .par file)",
+          beta="[numerics] beta parameters comma separated (NA, read from .par file)",
+          quantileTrim="[integers] comma-separated quantiles for trimming (0,1)"
           )
   
 ##get arguments and add to workspace
@@ -100,21 +102,39 @@ for(i in 1:length(filez)){
     outTxt[i] <- paste(filez[i],".hiddenMarkovPloidy",sep="")
 }
 
+#read parameters from file if not provided as input directly
+params <- list()
+directInputPar = FALSE
+if(is.na(alpha) | is.na(beta)){
+    for(i in 1:length(filez))
+        params[[i]] <- read.table(paste(filez[i],".par",sep=""), header=FALSE, as.is=T)
+}
+if(!(is.na(alpha) | is.na(beta))){
+    directInputPar = TRUE
+    for(i in 1:length(filez))
+        params[[i]] <- rbind(alpha,beta)
+}
+
+
 
 ##numeric conversion of inputs
 wind <- as.numeric(wind)
-minInd <- as.numeric(maxPloidy)
+minInd <- as.numeric(minInd)
 maxPloidy <- as.numeric(maxPloidy)
 ##individuals chosen for analysis (one by one at the moment)
 ##if chosenInd id NA it will be assigned as all individuals later
 if(all(!is.na(chosenInd)))
     chosenInd <- eval( parse( text=paste("c(",chosenInd,")",sep="") ) )
+if(!(is.na(alpha) | is.na(beta))){
+    alpha <- eval( parse( text=paste("c(",alpha,")",sep="") ) )
+    beta <- eval( parse( text=paste("c(",beta,")",sep="") ) )
+    }
 
-alpha <- eval( parse( text=paste("c(",alpha,")",sep="") ) )
-beta <- eval( parse( text=paste("c(",beta,")",sep="") ) )
+#print(alpha)
+#print(beta)
 
 ##print Rscript input
-cat("----------\nfileList: ", fileList," wind: ", wind," minInd: ", minInd, " chosenInd: ", chosenInd ," maxPloidy: ", maxPloidy, " isSims: ", isSims,  " alpha: ", alpha, " beta: ", beta, "\n-----------\n" )
+cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " chosenInd: ", chosenInd ," maxPloidy: ", maxPloidy, " alpha: ", alpha, " beta: ", beta, " quantileTrim: ", quantileTrim,  "\n-----------\n" )
 
 ############################
 ### Supporting functions ###
@@ -171,7 +191,7 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
     abline(h=hmm$mu, col="coral")
     legend(x=1, y = max(hmm$count[,1])+.1*max(hmm$count[,1]), legend=c("Mean Depth", "Neg.Bin. Mean"), col = c("deepskyblue1","coral"), lwd = rep(3,3), lty=c(NA,1), pch = c(20,NA), bty = "n", ncol = 2, cex=1.5)
 
-cat("==> Plot Done :)")
+#cat("\t==> Plot Done :)")
 
 }
 
@@ -302,11 +322,13 @@ MStep <- function(E,count,TRANS,alpha,beta){
 
     if(any(is.na(tmp)))
         return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta,remStates=remStates))
-    
-    while (any(tmp <= 0)){
+
+    countTooMany <- 1
+    while (any(tmp <= 0) & countTooMany<50){
         warning(sprintf("Alpha (%.4f)<0 ! Try smaller (10%s) Newton step ...\n", tmp_step,"%"))
         tmp_step <- tmp_step/10
         tmp <- alpha + tmp_step
+        countTooMany <- countTooMany + 1
     }
 		
     alpha <- tmp
@@ -399,6 +421,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
         ##check after some steps for some convergence and try to remove 1 state
         if(rate<=.0001 && bicIter>=30 && checkBIC){
             if(dim(alpha)[2]==2){ #if removing one state leaves only one ploidy
+                cat("\t==>reduction to 1 state start\n")
                 compLL <- c()
                 for(kk in 1:length(stateVec)){#try out one state at a time
                     diff <- +Inf
@@ -406,22 +429,36 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                     gg <- geno[,kk]
                     aa <- alpha[,kk]
                     bb <- beta[,kk]
+                    nanFlag <- FALSE
                     
                     while(diff >= 0.001 & contDiff < 150){
                         contDiff <- contDiff + 1
                         resSingle1 <- MStepSingle(count,aa,bb,gg)
                         llk1 <- resSingle1$llk
+                        if(is.nan(E1$llk)){
+                            nanFlag=TRUE
+                            break
+                            }
                         aa <- resSingle1$alpha
                         bb <- resSingle1$beta
                         contDiff <- contDiff + 1
                         resSingle2 <- MStepSingle(count,aa,bb,gg)
                         llk2 <- resSingle2$llk
+                        if(is.nan(E1$llk)){
+                            nanFlag=TRUE
+                            break
+                            }
                         aa <- resSingle2$alpha
                         bb <- resSingle2$beta
                         diff <- abs( (llk1 - llk2)/llk1 )
                     }
 
-                    compLL <- c( compLL, 2*llk2 )#models' AIC
+                    if(nanFlag==TRUE)
+                        compLL <- c( compLL, -Inf )#models' AIC
+                    if(nanFlag==FALSE)
+                        compLL <- c( compLL, 2*llk2 )#models' AIC
+
+                    
                 }
                 compLL[is.nan(compLL)] = min(compLL[!is.nan(compLL)]) - 1
 
@@ -463,10 +500,11 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                 if(is.nan(newBIC))
                     newBIC <- -Inf
 
-                cat("Best newBIC ", newBIC," oldBIC", oldBIC, "reduce states ", (newBIC>oldBIC), "\n") 
-
+                #cat("\tBest new BIC ", newBIC," old BIC", oldBIC, "reduce states ", (newBIC>oldBIC), "\n") 
+                cat("\t   reduce states:", (newBIC>oldBIC), "\t",sep="")
                 if(oldBIC > newBIC){
                     checkBIC <- FALSE
+                    cat("States: ", stateVec,"\n")
                     break
             }
             else{
@@ -476,8 +514,8 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                 stateVec <- stateVec[ whichBIC ]
                 bckwrd <- matrix(1,nrow(count),1)
             }
-                cat("!-!-!- States Relation : ", stateVec,"\n")
-                cat("!-!-!- alpha : ", alpha, " beta : ", beta,"\n")
+                cat("States: ", stateVec,"\n")
+                #cat("\talpha: ", alpha, " beta: ", beta," mu: ", alpha/beta, "\n")
                 break
         }
 
@@ -485,11 +523,13 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
             K <- dim(alpha)[2]
             
             ##if remoiving one state leaves at least other two, then what follows will happen
-            cat("check reduction to ",K-1,"states start\n\talpha: ", as.vector(alpha),"\n\tbeta: ",as.vector(beta),"\n",sep=" ")
+            #cat("\t==>reduction to ",K-1,"states start\n\t\talpha: ", as.vector(alpha),"\n\t\tbeta: ",as.vector(beta),"\n",sep=" ")
+            cat("\t==>reduction to ",K-1,"states start\n")
             bicIter <- 0
             viterbiIter <- 0
             combMat <- combs( 1:K, K-1 )
-            combIdx <- 1:(dim(combMat)[1])
+            sortIdx <- apply(combMat,1,is.sorted)
+            combIdx <- which(sortIdx)#1:(dim(combMat)[1])
             compLL <- c()
             Lcomb = length(combIdx)
             TRANS2 <- TRANS; delta2 <- delta; alpha2 <- alpha; beta2 <- beta; geno2 <- geno;
@@ -584,8 +624,8 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                 newBIC <- -Inf
             if(is.nan(oldBIC))
                 oldBIC <- -Inf
-            cat("Best newBIC ", newBIC," oldBIC", oldBIC, "reduce states ", (newBIC>oldBIC), "\n") 
-
+            #cat("\t\tBest new BIC ", newBIC," old BIC", oldBIC, "reduce states:", (newBIC>oldBIC), "\n") 
+            cat("\t   reduce states:", (newBIC>oldBIC), "\t",sep="") 
             if(oldBIC > newBIC){
                 checkBIC <- FALSE
                 delta <- delta2
@@ -615,15 +655,15 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                 alpha=alpha[sortIdx]
                 beta=beta[sortIdx]
             }
-            cat("!-!-!- States Relation : ", stateVec,"\n")
-            cat("!-!-!- alpha : ", alpha, "\nbeta : ", beta, "\nmu : ", alpha/beta, "\n")
+            cat("States Relation : ", stateVec,"\n")
+            #cat("\t==>alpha: ", alpha, "\n\t\tbeta: ", beta, "\n\t\tmu: ", alpha/beta, "\n")
         }
 
         N <- nrow(TRANS)        
         E <- EStep(count,delta,TRANS,alpha,beta,geno)
 
         logl[nit] <- E$llk
-        message(sprintf('Iter %d:\tLLK=%.3f\tploidies=%d', (nit-1), logl[nit], dim(alpha)[2] ) )	
+        #message(sprintf('Iter %d:\tLLK=%.3f\tploidies=%d', (nit-1), logl[nit], dim(alpha)[2] ) )	
         if(is.nan(logl[nit])) {			
             warning("NaN logl data detected. Returning the previous training results")
             logl[nit] <- 0; TRANS=TRANS0; alpha=alpha0; beta=beta0;  logl=logl0; bckwrd=postprob0; dens=dens0
@@ -827,7 +867,7 @@ for(i in 1:length(fileVector)){
     freqs[!sameREF] <- 1-freqs[!sameREF] #for freq f of non-matching reference allele, do 1-f
     if(any(is.na(chosenInd)))
         chosenInd <- 1:nInd
-    
+
     ###############################
     ## begin of FOR loop to      ##
     ## read one genome at a time ##
@@ -838,24 +878,29 @@ for(i in 1:length(fileVector)){
     pdf(outPdf[i])
 
     for(whichInd in chosenInd){
-        ##select single individual depth and genolikes
-        idxSingle <- seq(whichInd,rowsGL,nInd)
-        DPsingle <- DP[idxSingle]; GLsingle <- GL[idxSingle, ]
-    
-        ##trim the depth at the .1 and .9 quantile
-        TRIM=TRUE
-        if(TRIM){
-            q <- quantile( DPsingle, c(.1,.9) )  
-            idx <- which( DPsingle<as.numeric(q[2]) & DPsingle>as.numeric(q[1]) )
-            DPsingle <- DPsingle[idx]
-            GLsingle <- GLsingle[idx, ]
-            FQ <- FQ[idx]
-            sitesIndiv <- sites[idx] #individual filtered sites
-            freqsIndiv <- freqs[idx] #individual filtered frequencies
-            idxTot = as.vector( sapply(idx, function(j) ((j-1)*nInd+1):(j*nInd) ) )
-            GLfiltered <- GL[idxTot, ] #remember the filtering of GL
-            DPfiltered <- DP[idxTot]
+        
+        if(directInputPar==FALSE){
+            alpha=as.vector(as.numeric(params[[i]][2*whichInd - 1, ]))
+            beta=as.vector(as.numeric(params[[i]][2*whichInd, ]))
         }
+    
+    cat("    N.samples ",nInd," alpha0: ",alpha," beta0: ",beta,"\n",sep=" ")
+    
+    ##select single individual depth and genolikes
+    idxSingle <- seq(whichInd,rowsGL,nInd)
+    DPsingle <- DP[idxSingle]; GLsingle <- GL[idxSingle, ]
+    ##trim the depth at the chosen quantile
+    quantiles <- eval( parse( text=paste("c(",quantileTrim,")",sep="") ) )
+    q <- quantile( DPsingle, quantiles )  
+    idx <- which( DPsingle<=as.numeric(q[2]) & DPsingle>=as.numeric(q[1]) )
+    DPsingle <- DPsingle[idx]
+    GLsingle <- GLsingle[idx, ]
+    FQ <- FQ[idx]
+    sitesIndiv <- sites[idx] #individual filtered sites
+    freqsIndiv <- freqs[idx] #individual filtered frequencies
+    idxTot = as.vector( sapply(idx, function(j) ((j-1)*nInd+1):(j*nInd) ) )
+    GLfiltered <- GL[idxTot, ] #remember the filtering of GL
+    DPfiltered <- DP[idxTot]
 
         ##find SNPs with thresholds .1<f<.9
         findSNP <- which(freqsIndiv>.1 & freqsIndiv<.9)
@@ -910,16 +955,25 @@ for(i in 1:length(fileVector)){
             }
         }
 
-    ## TO DO
-    ##return something in a file
-    
+        ## TO DO
+        ##return something in a file
+        cat("File: ",BASENAMEFILE[i]," individual  ",whichInd," out of ",nInd,"\n",sep="",file=outTxt[i],append=!(fileCounter==1))
+        cat(hmmRes$delta,"\n",file=outTxt[i],sep="\t",append=TRUE)
+        cat(hmmRes$TRANS,"\n",file=outTxt[i],sep="\t",append=TRUE)
+        cat(hmmRes$alpha,"\n",file=outTxt[i],sep="\t",append=TRUE)
+        cat(hmmRes$beta,"\n",file=outTxt[i],sep="\t",append=TRUE)
+        cat(max(hmmRes$logl[hmmRes$logl<0]),"\n",file=outTxt[i],sep="\t",append=TRUE)
+        cat(hmmRes$states,"\n",file=outTxt[i],sep="\t",append=TRUE)
+        cat(hmmRes$postprob,"\n\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE)
 
+        
     ##plot ploidy inference    
-    stringPlot <- sprintf("Inferred ploidies from\n%s\nfor individual %d", BASENAMEFILE[i], whichInd)
-    hmmPlotting(hmmRes, V, truePl=NULL, main=stringPlot)
+        stringPlot <- sprintf("\tInferred ploidies from%s\nfor individual %d", BASENAMEFILE[i], whichInd)
+        hmmPlotting(hmmRes, V, truePl=NULL, main=stringPlot)
     
     ##print on screen    
-    cat(sprintf("Inferred ploidies from\n%s\nfor individual %d\n", BASENAMEFILE[i], whichInd))
+        cat(sprintf("\tInferred ploidies from %s for individual %d\n", BASENAMEFILE[i], whichInd))
+        cat("\t-----------------------------------------------------\n")
     fileCounter <- fileCounter + 1
     }
 
