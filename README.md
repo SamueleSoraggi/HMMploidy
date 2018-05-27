@@ -28,4 +28,22 @@ Run the script:
 bash simulationScript.sh
 ```
 
-## Script examples
+In you folder `$FOLDER`, there are four groups of data used in ploidy inference, one for each combination of depth and number of individuals (4 combinations in this example) in the following formats and with same basename:
+* `.genolikes` where the columns represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 6 (7 columns)
+* `.mafs` output from ANGSD calculating allele frequencies at each locus. Each column represents: chromosome, site number, major allele, minor allele, reference allele, estimated frequency, number of individuals with data.
+* `.mpileup` mpileup file of the simulated genome
+
+
+
+## Infer ploidy levels from simulated data
+
+
+
+## Infer ploidy levels from `mpileup` file
+
+
+
+
+
+
+
