@@ -32,10 +32,20 @@ In you folder `$FOLDER`, there are four groups of data used in ploidy inference,
 * `.genolikes` where the columns represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 6 (7 columns)
 * `.mafs` output from ANGSD calculating allele frequencies at each locus. Each column represents: chromosome, site number, major allele, minor allele, reference allele, estimated frequency, number of individuals with data.
 * `.mpileup` mpileup file of the simulated genome
-
-
+* `.initials` initial estimate for ploidy levels parameters. Each two lines represent the alpha and beta parameters of negative binomial distributions modelled on observed depths of one individual.
 
 ## Infer ploidy levels from simulated data
+
+Create a file `basenames.filelist` with the list of basenames for the simulated genomes. 
+Continuing the example from simulated data, the file would for example contain the following basenames:
+```
+poliploidyGenome.DP3.NIND10
+poliploidyGenome.DP3.NIND5
+poliploidyGenome.DP8.NIND10
+poliploidyGenome.DP8.NIND5
+```
+
+Run the R script from the shell
 
 
 
