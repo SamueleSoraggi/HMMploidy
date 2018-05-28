@@ -121,9 +121,12 @@ if(!(is.na(alpha) | is.na(beta))){
 wind <- as.numeric(wind)
 minInd <- as.numeric(minInd)
 maxPloidy <- as.numeric(maxPloidy)
+#flags
+isNumericChosenInd <- all(!is.na(chosenInd)) #check for choice of individuals
+
 ##individuals chosen for analysis (one by one at the moment)
 ##if chosenInd id NA it will be assigned as all individuals later
-if(all(!is.na(chosenInd)))
+if(isNumericChosenInd)
     chosenInd <- eval( parse( text=paste("c(",chosenInd,")",sep="") ) )
 if(!(is.na(alpha) | is.na(beta))){
     alpha <- eval( parse( text=paste("c(",alpha,")",sep="") ) )
@@ -142,33 +145,36 @@ cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " c
 
 
 hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
-    border = list()
     loci = hmm$lociSNP
-    for(i in 1:length(loci))
-        border <- round( seq(1,length(loci),length.out=10) )
-    idxBorder = c()
-    for(i in 1:length(border))
-
+    borderVal <- round( seq(min(loci),max(loci),length.out=min(20,length(V$y)) ) )
+    xlabels=c()
+    if(max(loci)>=1e+6){
+        XLAB="Scaffold Position (Mb)"
+        for(i in 1:(length(borderVal)))
+            xlabels[i] <- sprintf("%.1f", borderVal[i]/(1e+6))
+    }
+    if(max(loci)<1e+6){
+        XLAB="Scaffold Position (Kb)"
+        for(i in 1:(length(borderVal)))
+            xlabels[i] <- sprintf("%.1f", borderVal[i]/(1e+3))
+    }
+    print(xlabels)
    
     layout(matrix(c(1,1,1,1,2,2), nrow = 3, ncol = 2, byrow = TRUE))
  
-    plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", ylab="Ploidy", xlab="Scaffold Position (Kb)", ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+.75 ), cex=.5, cex.main=1.5, cex.lab=1.2)
+    plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.5, cex.main=1.4, cex.lab=1.2)
 
     if(!is.null(truePl))
         points(truePl-.075 , pch=15, lwd=.75, col="coral", cex=.5)
-
-    xlabels=c()
-    for(i in 1:length(border))
-        xlabels <- c(xlabels,  sprintf("%.1f",loci[ border[i] ]/1e+3) )
-    
+   
     abline( h=seq( min(V$y,truePl), max(V$y,truePl) ), col="gray" )
 
-    axis( side=1, at=seq(1,length(V$y),length.out=10), labels=xlabels, las=0, cex=1.2 )
+    axis( side=1, at=seq(1,length(V$y),length.out=min(20,length(V$y))), labels=xlabels, las=2, cex=1 )
     axis( side=2, at=seq(min(V$y), max(V$y)) )
     
 
     postProb <- hmm$postprob
-        counter=1
+    counter=1
     for(yValue in intersect(hmm$states,seq(min(V$y,truePl), max(V$y,truePl)))){
         polygon( x=c( length(V$y),1, seq(1,length(V$y)), length(V$y) ), y= yValue + 0.025 + c( 0, 0, postProb[,counter], 0 )/2, col="deepskyblue1", border=NA)
         counter=counter+1
@@ -183,15 +189,13 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
         legendTxt = c( "Inferred Ploidy", "Posterior Prob." )
     }
   
-    legend(x=1, y = max(V$y,truePl)+.85, legend=legendTxt, col = legendCol, lwd = rep(3,length(legendPch)), pch = legendPch, bty = "n", ncol = length(legendPch), cex=1.5)
+    legend(x=1, y = max(V$y,truePl)+1, legend=legendTxt, col = legendCol, lwd = rep(3,length(legendPch)), pch = legendPch, bty = "n", ncol = length(legendPch), cex=1.4)
 
     ##PLOT DEPTH
-    plot(hmm$count[,1], type="p", lwd=2, col="deepskyblue1", xlab="Scaffold Position (Mb)", main="Mean Depth", xaxt="n", ylab="Mean Depth", bg=3, ylim=c(min(hmm$count[,1])-.1*min(hmm$count[,1]),max(hmm$count[,1])+.125*max(hmm$count[,1])), cex.lab=1.2)
-    axis( side=1, at=seq(1,length(V$y),length.out=10), labels=xlabels, las=0, cex=1.2 )
+    plot(hmm$count[,1], type="p", lwd=2, col="deepskyblue1", xlab=XLAB, main="Window-Mean Depth", xaxt="n", ylab="Window-Mean Depth", bg=3, ylim=c(min(hmm$count[,1])-.1*min(hmm$count[,1]),max(hmm$count[,1])+.2*max(hmm$count[,1])), cex.lab=1.2)
+    axis( side=1, at=seq(1,length(V$y),length.out=min(20,length(V$y))), labels=xlabels, las=2, cex=1 )
     abline(h=hmm$mu, col="coral")
-    legend(x=1, y = max(hmm$count[,1])+.1*max(hmm$count[,1]), legend=c("Mean Depth", "Neg.Bin. Mean"), col = c("deepskyblue1","coral"), lwd = rep(3,3), lty=c(NA,1), pch = c(20,NA), bty = "n", ncol = 2, cex=1.5)
-
-#cat("\t==> Plot Done :)")
+    legend(x=1, y = max(hmm$count[,1])+.25*max(hmm$count[,1]), legend=c("Mean Depth", "Distribution Mean"), col = c("deepskyblue1","coral"), lwd = rep(3,3), lty=c(NA,1), pch = c(20,NA), bty = "n", ncol = 2, cex=1.4)
 
 }
 
@@ -212,9 +216,10 @@ cppFunction('NumericVector matchSites(NumericVector freq, NumericVector refer) {
        }
       if (refer[i] < freq[j]){
          found = 1;
+
        }
     j++;
-    } 
+    }
   }
   return out;
 }')
@@ -391,7 +396,7 @@ MStepSingle <- function(count,alpha,beta,geno){
 
 
 ##EM algorithm for HMM optimization
-nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=6, NBH_NIT_MAX=10000, NBH_TOL=1e-5, MAXALPHA=1e7, MAXBETA=1e7){
+nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=maxPloidy, NBH_NIT_MAX=10000, NBH_TOL=1e-5, MAXALPHA=1e7, MAXBETA=1e7){
 
     stateVec <- 1:PLOIDYMAX
     geno <- genolike[,stateVec]
@@ -831,7 +836,7 @@ Viterbi <- function(hmm){
 
 
 wind <- as.numeric(wind) #window size
-minInd <- as.numeric(maxPloidy)
+minInd <- as.numeric(minInd)
 maxPloidy <- as.numeric(maxPloidy) 
 #nInd=as.numeric(nInd) #number of individuals
 #GLsingle #genolikes on ploidies (all and single individual)
@@ -865,7 +870,7 @@ for(i in 1:length(fileVector)){
     sameREF <- (TRUEREF==FQREF) #reference matching with the one in .genolikes
     freqs <- as.numeric(FQ)
     freqs[!sameREF] <- 1-freqs[!sameREF] #for freq f of non-matching reference allele, do 1-f
-    if(any(is.na(chosenInd)))
+    if(!isNumericChosenInd)
         chosenInd <- 1:nInd
 
     ###############################
@@ -880,8 +885,8 @@ for(i in 1:length(fileVector)){
     for(whichInd in chosenInd){
         
         if(directInputPar==FALSE){
-            alpha=as.vector(as.numeric(params[[i]][2*whichInd - 1, ]))
-            beta=as.vector(as.numeric(params[[i]][2*whichInd, ]))
+            alpha=as.vector(as.numeric(params[[i]][2*whichInd - 1, 1:maxPloidy ]))
+            beta=as.vector(as.numeric(params[[i]][2*whichInd, 1:maxPloidy]))
         }
     
     cat("    N.samples ",nInd," alpha0: ",alpha," beta0: ",beta,"\n",sep=" ")
@@ -915,10 +920,8 @@ for(i in 1:length(fileVector)){
             geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
             for(pp in 1:maxPloidy) #change ploidy
                 geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
-            ##geno2[pp,] <- pGenoData(f=freqsSNP, gl=readGL( findSNP, pp, nInd=1, GLsingle[[i]]),nInd=1)      
             ##...and per window
-            geno <- t( apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP)) )
-            geno <- t( geno )
+            geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP)) 
         }
         ##mean depth over each locus in a window (not only on SNPs)
         ##use sumGeno(DPsingle,wind,sitesIndiv,sitesSNP,avg=TRUE)
@@ -937,11 +940,11 @@ for(i in 1:length(fileVector)){
         genoResc <- t( apply( geno , 1, logRescale ) )
 
         ##some initial parameters
-        delta=rep(1/6,6) #i think it is ok without prior info
-        Pi0=matrix(1/6,nrow=6,ncol=6) #tridiagonal makes more sense?
+        delta=rep(1/maxPloidy,maxPloidy) #i think it is ok without prior info
+        Pi0=matrix(1/maxPloidy,nrow=maxPloidy,ncol=maxPloidy) #tridiagonal makes more sense?
         count <- matrix(DPmean,ncol=1)
         ##start the HMM
-        hmmRes <- nbHMM(count, alpha=alpha, beta=beta, TRANS=Pi0, delta=delta, genolike=genoResc)
+        hmmRes <- nbHMM(count, alpha=alpha, beta=beta, TRANS=Pi0, delta=delta, genolike=genoResc, PLOIDYMAX=maxPloidy)
         hmmRes$'lociSNP' = sitesSNP; hmmRes$'geno' = geno;
 
         ##apply Viterbi and properly order ploidy labels
@@ -968,11 +971,11 @@ for(i in 1:length(fileVector)){
 
         
     ##plot ploidy inference    
-        stringPlot <- sprintf("\tInferred ploidies from%s\nfor individual %d", BASENAMEFILE[i], whichInd)
+        stringPlot <- sprintf("\tInferred ploidies from %s\nindividual %d", BASENAMEFILE[i], whichInd)
         hmmPlotting(hmmRes, V, truePl=NULL, main=stringPlot)
     
     ##print on screen    
-        cat(sprintf("\tInferred ploidies from %s for individual %d\n", BASENAMEFILE[i], whichInd))
+        cat(sprintf("\tInferred ploidies from %s individual %d\n", BASENAMEFILE[i], whichInd))
         cat("\t-----------------------------------------------------\n")
     fileCounter <- fileCounter + 1
     }

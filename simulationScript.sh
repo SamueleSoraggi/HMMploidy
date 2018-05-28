@@ -6,12 +6,12 @@
 JULIA=~/julia/bin/julia 
 NGSPOLY=../../BdData/ngsJulia/ngsPoly/ngsPolyLite.jl
 
-ploidy=(1 2 3 4 5 4 3 2 1) #sequence of ploidy levels
-depth=(1 2 5 10 20) #haploid depth (one simulation for each depth) 
-sites=100 #number of loci for a ploidy level
+ploidy=(2 5 4 2) #sequence of ploidy levels
+depth=(3 8) #haploid depth (one simulation for each depth) 
+sites=1000 #number of loci for a ploidy level
 samples=(5 10) #individuals to simulate (one simulation for each value)
 FOLDER=provaScript #folder where to save simulations (must exist)
-BASENAME=prova #name of the output file
+BASENAME=poliploidyGenome #name of the output file
 
 #generate data for all combinations of parameters (sample and depth)
 for SAM in ${samples[@]}
@@ -51,18 +51,20 @@ do
 	$JULIA $NGSPOLY --fin $NAME.mpileup.gz --fglikes $NAME.genolikes.gz --nSamples $SAM --minNonMajorCount 2 --minQ 10 --verbose 1
     
 	gunzip -f $NAME.mpileup.gz
+	gunzip -f $NAME.genolikes.gz
 
 	#calculate allele frequencies
 	#------some filtering options:
 	#minInd: min number of individuals with data for the locus to be used
 	#        the same option is present in the HMM script I made
 	#minIndDepth: min depth for each individual to be used
-	./angsd/angsd -pileup $NAME.mpileup -GL 1 -out $NAME -doMaf 8 -fai $NAME.fai -nind $SAM -doCounts 1 -p 1 -doMajorMinor 1 -minInd 3 -minIndDepth 1
+	./angsd/angsd -pileup $NAME.mpileup -GL 1 -out $NAME -doMaf 8 -fai $NAME.fai -nind $SAM -doCounts 1 -p 1 -doMajorMinor 1 -minInd 1 -minIndDepth 1
 
 	gunzip -f $NAME.mafs.gz
+	rm -f $NAME.fai
 	
 	echo "done :)"
 
     done
 done
-#rm $NAME.mpileup.gz shit.pars
+
