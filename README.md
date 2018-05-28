@@ -11,7 +11,6 @@ Once ANGSD is downloaded, substitute the file abcFreq.cpp with the one in this g
 `simulationScript.sh`: simulate poliploidy data: set the ploidy numbers, haploid depths and number of individuals editing the options in the file (ps: I will make this as a proper script with inputs from command line).
 
 #### Input options 
-in the script are the following
 * `ploidy`: vector with the desired sequence of ploidy numbers  
 * `depth`: vector with the desired haploid depths
 * `sites`: number of sites for each ploidy number
