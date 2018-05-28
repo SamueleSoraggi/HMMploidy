@@ -43,14 +43,14 @@ Inference of ploidy numbers is performed through the R script `hiddenMarkovPloid
 
 #### Options
 
-`file`: base name of a group of files with formats `.genolikes`,`.mafs`,`.mpileup`,`.par`.
-`fileList`: list of base names for group of files with formats `.genolikes`,`.mafs`,`.mpileup`,`.par`.
-`maxPloidy`: max number of ploidy levels (default 6) 
-`alpha`: comma separated values of alphas for the depth distributions (default NA)
-`beta`: comma separated values of alphas for the depth distributions (default NA)
-`chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
-`quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
-`minInd`: min number of individuals with data for which a locus is usedconsider loci 
+* `file`: base name of a group of files with formats `.genolikes`,`.mafs`,`.mpileup`,`.par`.
+* `fileList`: list of base names for group of files with formats `.genolikes`,`.mafs`,`.mpileup`,`.par`.
+* `maxPloidy`: max number of ploidy levels (default 6) 
+* `alpha`: comma separated values of alphas for the depth distributions (default NA)
+* `beta`: comma separated values of alphas for the depth distributions (default NA)
+* `chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
+* `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
+* `minInd`: min number of individuals with data for which a locus is usedconsider loci 
 
 ### Example: Analyze ploidy numbers from simulations
 
