@@ -1,11 +1,9 @@
 # Hidden Markov Ploidy
 Tool for inferring ploidy levels, testing for aneuploidy and other stuff.
 Calculating its allele frequencies and genotype likelihoods requires to download the following tool
-* [ANGSD](https://github.com/ANGSD/angsd)
+* [ANGSD](https://github.com/ANGSD/angsd). Once ANGSD is downloaded, substitute the file `abcFreq.cpp` with the one in this github repository, and thereafter compile ANGSD. This allows to model allele frequencies for poliploidy genomes and not only for the diploid case.
 * [NGSPOLY](https://github.com/ImperialCollegeLondon/ngsJulia/tree/master/ngsPoly)
-* [JULIA vers >= 0.4.7](https://julialang.org/downloads/)
-
-Once ANGSD is downloaded, substitute the file abcFreq.cpp with the one in this github repository, and thereafter compile ANGSD. This allows to model allele frequencies for poliploidy genomes and not only for the diploid case.
+* [JULIA vers >= 0.4.7](https://julialang.org/downloads/), with `GZip` and `ArgParse` packages
 
 ## Poliploid data simulations
 `simulationScript.sh`: simulate poliploidy data: set the ploidy numbers, haploid depths and number of individuals editing the options in the file (ps: I will make this as a proper script with inputs from command line).
