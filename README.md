@@ -55,8 +55,7 @@ Inference of ploidy numbers is performed through the R script `hiddenMarkovPloid
 `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
 `minInd`: min number of individuals with data for which a locus is usedconsider loci 
 
-### Example: 
-## Analyze ploidy numbers from simulations
+### Example: Analyze ploidy numbers from simulations
 
 Simulate a genome called `poliploidyGenome` with sequence of ploidy numbers 2-5-4-2 for two different haploid depths, 3X and 8X, and two different amount of individuals, 5 and 10. Consider `1000` simulated loci for each ploidy level. 
 Inside the script, edit the options as it follows
@@ -90,10 +89,19 @@ ploidySim/poliploidyGenome.DP8.NIND5
 Run the analysis of ploidy numbers for the four simulated datasets. Use window size 100, analyze all the individuals, consider the max amount of ploidys being 5, do not trim the data, and use loci where there is data for >=3 individuals
 
 ```Shell
-   Rscript hiddenMarkovPloidyShell.R  fileList=basenames.filelist  maxPloidy=5  wind=100  minInd=3
+Rscript hiddenMarkovPloidyShell.R  fileList=basenames.filelist  maxPloidy=5  wind=100  minInd=3
 ```
 
-
-
-
-
+For each basename, there are two outputs:
+* a `.pdf` file with inferred ploidy numbers for each individual
+* a `.hiddenMarkovPloidy` file where, for each individual, results are arranged on lines as it follows:
+   * File name and individual index
+   * starting probabilities of inferred ploidies
+   * transition matrix printed on one line
+   * alpha parameters depth distributions
+   * beta parameters depth distributions
+   * final loglikelihood of the model
+   * inferred ploidy numbers
+   * posterior probabilities for the inferred states printed on one line
+   * empty line
+   
