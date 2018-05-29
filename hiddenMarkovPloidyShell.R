@@ -8,37 +8,37 @@ library(Rcpp)
 
 l<-commandArgs(TRUE)
 getArgs<-function(x,l)
-  unlist(strsplit(grep(paste("^",x,"=",sep=""),l,val=T),"="))[2]
+    unlist(strsplit(grep(paste("^",x,"=",sep=""),l,val=T),"="))[2]
 Args<-function(l,args){
- if(! all(sapply(strsplit(l,"="),function(x)x[1])%in%names(args))){
-   cat("Error -> ",l[!sapply(strsplit(l,"="),function(x)x[1])%in%names(args)]," is not a valid argument")
-   q("no")
- }
- arguments<-list()
- for(a in names(args))
-   arguments[[a]]<-getArgs(a,l)
- 
- if(any(!names(args)%in%names(arguments)&sapply(args,is.null))){
-   cat("Error -> ",names(args)[!names(args)%in%names(arguments)&sapply(args,is.null)]," is not optional!\n")
-   q("no")
- }
- for(a in names(args))
-   if(is.null(arguments[[a]]))
-     arguments[[a]]<-args[[match(a,names(args))]]
- 
- arguments
+    if(! all(sapply(strsplit(l,"="),function(x)x[1])%in%names(args))){
+        cat("Error -> ",l[!sapply(strsplit(l,"="),function(x)x[1])%in%names(args)]," is not a valid argument")
+        q("no")
+    }
+    arguments<-list()
+    for(a in names(args))
+        arguments[[a]]<-getArgs(a,l)
+    
+    if(any(!names(args)%in%names(arguments)&sapply(args,is.null))){
+        cat("Error -> ",names(args)[!names(args)%in%names(arguments)&sapply(args,is.null)]," is not optional!\n")
+        q("no")
+    }
+    for(a in names(args))
+        if(is.null(arguments[[a]]))
+            arguments[[a]]<-args[[match(a,names(args))]]
+    
+    arguments
 }
 
 print.args<-function(args,des){
-  if(missing(des)){
-    des<-as.list(rep("",length(args)))
-    names(des)<-names(args)
-  }
-  cat("->  Needed arguments:\n")
-  mapply(function(x)cat("\t",x,":",des[[x]],"\n"),cbind(names(args)[sapply(args,is.null)]))
-  cat("->  Optional arguments (defaults):\n")
-  mapply(function(x)cat("\t",x," (",args[[x]],")",":",des[[x]],"\n"),cbind(names(args)[!sapply(args,is.null)]))
-  q("no")
+    if(missing(des)){
+        des<-as.list(rep("",length(args)))
+        names(des)<-names(args)
+    }
+    cat("->  Needed arguments:\n")
+    mapply(function(x)cat("\t",x,":",des[[x]],"\n"),cbind(names(args)[sapply(args,is.null)]))
+    cat("->  Optional arguments (defaults):\n")
+    mapply(function(x)cat("\t",x," (",args[[x]],")",":",des[[x]],"\n"),cbind(names(args)[!sapply(args,is.null)]))
+    q("no")
 }
 
 
@@ -76,8 +76,8 @@ if(length(l)==0) print.args(args,des)
 attach(Args(l,args))
 args <- commandArgs(TRUE)
 if(length(args)==0){
-  cat(" Arguments: output prefix\n")
-  q("no")
+    cat(" Arguments: output prefix\n")
+    q("no")
 }
 
 
@@ -131,7 +131,7 @@ if(isNumericChosenInd)
 if(!(is.na(alpha) | is.na(beta))){
     alpha <- eval( parse( text=paste("c(",alpha,")",sep="") ) )
     beta <- eval( parse( text=paste("c(",beta,")",sep="") ) )
-    }
+}
 
 #print(alpha)
 #print(beta)
@@ -158,12 +158,12 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
         for(i in 1:(length(borderVal)))
             xlabels[i] <- sprintf("%.1f", borderVal[i]/(1e+3))
     }
-    print(xlabels)
-   
+    #print(xlabels)
+    
     layout(matrix(c(1,1,1,1,2,2), nrow = 3, ncol = 2, byrow = TRUE))
- 
+    
     plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.5, cex.main=1.4, cex.lab=1.2)
-
+    
     if(!is.null(truePl))
         points(truePl-.075 , pch=15, lwd=.75, col="coral", cex=.5)
    
@@ -178,7 +178,7 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
     for(yValue in intersect(hmm$states,seq(min(V$y,truePl), max(V$y,truePl)))){
         polygon( x=c( length(V$y),1, seq(1,length(V$y)), length(V$y) ), y= yValue + 0.025 + c( 0, 0, postProb[,counter], 0 )/2, col="deepskyblue1", border=NA)
         counter=counter+1
-        }
+    }
     
     legendCol = c("coral","navyblue","deepskyblue1")
     legendPch = c(15,15,15)
@@ -188,7 +188,7 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
         legendPch = c(15,15)
         legendTxt = c( "Inferred Ploidy", "Posterior Prob." )
     }
-  
+    
     legend(x=1, y = max(V$y,truePl)+1, legend=legendTxt, col = legendCol, lwd = rep(3,length(legendPch)), pch = legendPch, bty = "n", ncol = length(legendPch), cex=1.4)
 
     ##PLOT DEPTH
@@ -201,27 +201,35 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
 
 
 ##fast function to match loci between ANGSD .maf file (freq) and .genolikes file (refer)
-cppFunction('NumericVector matchSites(NumericVector freq, NumericVector refer) {
-  int n = refer.size();
-  NumericVector out(n);
+cppFunction('NumericVector matchSites(NumericVector refer, NumericVector freq) {
+  int nRefer = refer.size();
+  int nFreq = freq.size();
+  NumericVector out(2*nRefer);
   int found = 0;
   int j = 0;
+  int k = 0;
+  int i=0;
 
-  for (int i = 0; i < n; i++) {
-    found = 0;
-    while (found == 0) {
-      if (refer[i] == freq[j]){
-         out[i] = j;
-         found = 1;
-       }
-      if (refer[i] < freq[j]){
-         found = 1;
-
-       }
-    j++;
+  while (found == 0) {
+    if (refer[i] == freq[j]){
+         out[2*k] = j;
+         out[2*k+1] = i;
+         j++;
+         i++;
+         k++;
     }
+    if (refer[i] < freq[j] & i < (nRefer - 1) )
+         i++;
+    if (refer[i] > freq[j] & j < (nFreq-1) )
+         j++;
+    if(i==nRefer)
+      found = 1;
+    if( j>=(nRefer-1) )
+      found = 1;
   }
-  return out;
+
+
+  return out[seq(0,(2*k-1))];
 }')
 
 
@@ -245,13 +253,13 @@ EStep <- function(count,delta,TRANS,alpha,beta,genolike){
         tmp <- cumsum(rbind(0, log(as.matrix(1:max(count)))))
         dnorm <- as.matrix(tmp[count+1])
     }
-
+    
     
     densLog <- matrix(1, nrow=Total) %*% (alpha * log(beta/(1+beta)) - lgamma(alpha)) - count %*% log(1+beta) + lgamma(count %*% matrix(1, ncol=N) + matrix(1, nrow=Total) %*% alpha) - dnorm %*% matrix(1, ncol=N) 
     
     dens2 <- matrix(0,nrow=nrow(densLog),ncol=dim(genolike)[2])
     for(ii in 1:dim(genolike)[2]) dens2[,ii] <- densLog[,ii] + genolike[,ii]
-
+    
     #dens <- exp( densLog )
     dens2 <- exp( dens2 )
 
@@ -263,7 +271,7 @@ EStep <- function(count,delta,TRANS,alpha,beta,genolike){
     forwrd2[1,] <- delta*dens2[1,]
 		
     for(t in 2:Total){
-        #forwrd[t,] <- (forwrd[t-1,] %*% TRANS) * dens[t,]
+                                        #forwrd[t,] <- (forwrd[t-1,] %*% TRANS) * dens[t,]
         forwrd2[t,] <- (forwrd2[t-1,] %*% TRANS) * dens2[t,]
         #scale[t] <- sum(forwrd[t,])
         scale2[t] <- sum(forwrd2[t,])
@@ -291,7 +299,7 @@ EStep <- function(count,delta,TRANS,alpha,beta,genolike){
 
 ##Mstep for the conditional EM optimization
 MStep <- function(E,count,TRANS,alpha,beta){
-
+    
     remStates = FALSE
     N <- nrow(TRANS)
     Total <- dim(count)[1]
@@ -311,23 +319,23 @@ MStep <- function(E,count,TRANS,alpha,beta){
             break;
         }
     }
-
+    
     if(remStates)
         return(list(delta=delta,TRANS=TRANS0,alpha=alpha,beta=beta,remStates=remStates))
     
     eq_count <- apply(ni, 2, sum)
     beta <- alpha / ( (t(count) %*% ni) / eq_count )
-		
+    
     grad <- eq_count * (log(beta / (1+beta)) - digamma(alpha)) + apply(ni * digamma(count %*% matrix(1,ncol=N) + matrix(1,nrow=Total) %*% alpha), 2, sum)
-				
+    
     hess <- -eq_count * trigamma(alpha) + apply(ni * trigamma(count %*% matrix(1,ncol=N) + matrix(1, nrow=Total) %*% alpha), 2, sum)
-
+    
     tmp_step <- - grad / hess
     tmp <- alpha + tmp_step
-
+    
     if(any(is.na(tmp)))
         return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta,remStates=remStates))
-
+    
     countTooMany <- 1
     while (any(tmp <= 0) & countTooMany<50){
         warning(sprintf("Alpha (%.4f)<0 ! Try smaller (10%s) Newton step ...\n", tmp_step,"%"))
@@ -335,9 +343,9 @@ MStep <- function(E,count,TRANS,alpha,beta){
         tmp <- alpha + tmp_step
         countTooMany <- countTooMany + 1
     }
-		
+    
     alpha <- tmp
-
+    
     return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta,remStates=remStates))
 }
 
@@ -527,14 +535,15 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
             
             K <- dim(alpha)[2]
             
-            ##if remoiving one state leaves at least other two, then what follows will happen
+            ##if removing one state leaves at least other two, then what follows will happen
             #cat("\t==>reduction to ",K-1,"states start\n\t\talpha: ", as.vector(alpha),"\n\t\tbeta: ",as.vector(beta),"\n",sep=" ")
             cat("\t==>reduction to ",K-1,"states start\n")
             bicIter <- 0
             viterbiIter <- 0
             combMat <- combs( 1:K, K-1 )
-            sortIdx <- apply(combMat,1,is.sorted)
-            combIdx <- which(sortIdx)#1:(dim(combMat)[1])
+            #sortIdx <- apply(combMat,1,is.sorted)
+            #combIdx <- which(sortIdx)#
+            combIdx <- 1:(dim(combMat)[1])
             compLL <- c()
             Lcomb = length(combIdx)
             TRANS2 <- TRANS; delta2 <- delta; alpha2 <- alpha; beta2 <- beta; geno2 <- geno;
@@ -858,16 +867,32 @@ for(i in 1:length(fileVector)){
     rowsGL <- dim(GL)[1]
     nInd <- length( unique( GL[,3] ) )
     sites <- unique( GL[ ,2] )
+    
     DP <- GL[ ,5]
     TRUEREF <- GL[seq(1,rowsGL,nInd),6]
     GL <- GL[ ,-c(1:7)]
     FQInd <- FREQFILE[ ,7] #per-loci Nr individuals in frequency estimate
+    #print(nInd)
     FF <- FREQFILE[ ,2] #sites to be kept...
     FF <- FF[FQInd>=minInd] #...filtered using FQInd
-    sameSites <- matchSites(FF,sites) + 1 #Format matching with .mafs output (+1=adapting indexing RC++)
-    FQ <- FREQFILE[sameSites,6] 
-    FQREF <- FREQFILE[sameSites,3] #reference in the .mafs file
+    #print(FF[1:20])
+    #print(sites[1:20])
+    sameSites <- matchSites(sites,FF) + 1 #Format matching with .mafs output (+1=adapting indexing RC++)
+    keepFQREF = sameSites[seq(1,length(sameSites),2)]
+    keepTRUEREF = sameSites[seq(2,length(sameSites),2)]
+    #print(sameSites[1:40])
+    FQ <- FREQFILE[keepFQREF,6] 
+    FQREF <- FREQFILE[keepFQREF,3] #reference in the .mafs file
+    TRUEREF = TRUEREF[keepTRUEREF]
+    #print(length(TRUEREF))
+    #print(length(FQREF))
+    #print(head(TRUEREF))
+    #print(head(FQREF))
     sameREF <- (TRUEREF==FQREF) #reference matching with the one in .genolikes
+    sameREF <- sameREF[!is.na(sameREF)]
+    #print(head(sameREF))
+    #print(TRUEREF[is.na(sameREF)])
+    #print(FQREF[is.na(sameREF)])    
     freqs <- as.numeric(FQ)
     freqs[!sameREF] <- 1-freqs[!sameREF] #for freq f of non-matching reference allele, do 1-f
     if(!isNumericChosenInd)
@@ -889,23 +914,23 @@ for(i in 1:length(fileVector)){
             beta=as.vector(as.numeric(params[[i]][2*whichInd, 1:maxPloidy]))
         }
     
-    cat("    N.samples ",nInd," alpha0: ",alpha," beta0: ",beta,"\n",sep=" ")
+        cat("    N.samples ",nInd," alpha0: ",alpha," beta0: ",beta,"\n",sep=" ")
     
     ##select single individual depth and genolikes
-    idxSingle <- seq(whichInd,rowsGL,nInd)
-    DPsingle <- DP[idxSingle]; GLsingle <- GL[idxSingle, ]
+        idxSingle <- seq(whichInd,rowsGL,nInd)
+        DPsingle <- DP[idxSingle]; GLsingle <- GL[idxSingle, ]
     ##trim the depth at the chosen quantile
-    quantiles <- eval( parse( text=paste("c(",quantileTrim,")",sep="") ) )
-    q <- quantile( DPsingle, quantiles )  
-    idx <- which( DPsingle<=as.numeric(q[2]) & DPsingle>=as.numeric(q[1]) )
-    DPsingle <- DPsingle[idx]
-    GLsingle <- GLsingle[idx, ]
-    FQ <- FQ[idx]
-    sitesIndiv <- sites[idx] #individual filtered sites
-    freqsIndiv <- freqs[idx] #individual filtered frequencies
-    idxTot = as.vector( sapply(idx, function(j) ((j-1)*nInd+1):(j*nInd) ) )
-    GLfiltered <- GL[idxTot, ] #remember the filtering of GL
-    DPfiltered <- DP[idxTot]
+        quantiles <- eval( parse( text=paste("c(",quantileTrim,")",sep="") ) )
+        q <- quantile( DPsingle, quantiles )  
+        idx <- which( DPsingle<=as.numeric(q[2]) & DPsingle>=as.numeric(q[1]) )
+        DPsingle <- DPsingle[idx]
+        GLsingle <- GLsingle[idx, ]
+        FQ <- FQ[idx]
+        sitesIndiv <- sites[idx] #individual filtered sites
+        freqsIndiv <- freqs[idx] #individual filtered frequencies
+        idxTot = as.vector( sapply(idx, function(j) ((j-1)*nInd+1):(j*nInd) ) )
+        GLfiltered <- GL[idxTot, ] #remember the filtering of GL
+        DPfiltered <- DP[idxTot]
 
         ##find SNPs with thresholds .1<f<.9
         findSNP <- which(freqsIndiv>.1 & freqsIndiv<.9)
@@ -968,7 +993,7 @@ for(i in 1:length(fileVector)){
         cat(max(hmmRes$logl[hmmRes$logl<0]),"\n",file=outTxt[i],sep="\t",append=TRUE)
         cat(hmmRes$states,"\n",file=outTxt[i],sep="\t",append=TRUE)
         cat(hmmRes$postprob,"\n\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE)
-
+        
         
     ##plot ploidy inference    
         stringPlot <- sprintf("\tInferred ploidies from %s\nindividual %d", BASENAMEFILE[i], whichInd)
@@ -977,7 +1002,7 @@ for(i in 1:length(fileVector)){
     ##print on screen    
         cat(sprintf("\tInferred ploidies from %s individual %d\n", BASENAMEFILE[i], whichInd))
         cat("\t-----------------------------------------------------\n")
-    fileCounter <- fileCounter + 1
+        fileCounter <- fileCounter + 1
     }
 
     ##close pdf plot connection
