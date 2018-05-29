@@ -102,3 +102,35 @@ For each basename, there are two outputs:
    * posterior probabilities for the inferred states printed on one line
    * empty line
    
+## Inferring alpha and beta values from .genolikes files 
+ 
+Initial estimates for alpha and beta to be fed into `hiddenMarkovPloidyShell.R` can be calculated by using `Fitting_dist_contig.py`.
+
+Currently this is performed by running the script with a list of the input files and the number of samples in each (at current the number of samples must be the same for all files but this will be changed)
+
+#### Output
+
+Output is in the format of a `filename.par` file for each input file in the file list. Each `filename.par` file will have two tab seperated lines for each individual. The first line will contain the alpha values for individual i and the second line will contain the beta values for individual i.
+
+E.g. an example file of M individuals would look as follows:
+```
+individual1.alpha1   individual1.alpha2   individual1.alpha3 ... individual1.alphaN
+individual2.alpha1   individual2.alpha2   individual2.alpha3 ... individual2.alphaN
+.
+.
+.
+individualM.alpha1   individualM.alpha2  individualM.alpha3 ... individualM.alphaN
+```
+### Example
+
+Run the script as follows:
+
+```Shell
+python Fitting_dist_contig.py basenames.filelist NSAMS  
+```
+Where basenames.filelist is the file containg the list of input files and NSAMS is the number of individuals in each sample.
+
+#### To be added
+* Allow seperate number of individuals in each input file
+* change tab seperated output to comma seperated output
+* Add option to fix ploidy level for alphas and betas
