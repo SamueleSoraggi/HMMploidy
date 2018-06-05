@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt # plotting the models fitted
 import re # Read the results and extract the values
 import sys # allow command line arguments of input and output files
 import os # To subprocess the extraction of depth files from mpileup files
-# import Fitting_funcs
+import argparse
 
 
 ########### Negative Binomial mixture models ############
@@ -44,14 +44,23 @@ def neg_binomial_5(Neg_Binom_Params):
     return(residuals) 
 
 
-###### Sort out inputs 
-#if len(sys.argv<3):
-#    print("Not enough arguments, please check a list of files and number of samples is included!")
-#    break
-#elif len(sys.argv<4):
+###### Parse arguments
 
-input=sys.argv[1] # input of list of files
-NSAMS=int(sys.argv[2]) # Number of samples
+parser = argparse.ArgumentParser()
+parser.add_argument("input",help="File containing a list of basenames for the .genolike files to be used")
+parser.add_argument("NSAMS",type=int,help="Maximum number of samples in any file in input list")
+parser.add_argument("-d","--num_dist",help="Fix the number of distributions in the mixture distribution",default=0)
+parser.add_argument("-f","--filter",help="comma seperated decimals for upper and lower levels of filtering. Default = 0,1",default='0,1')
+args=parser.parse_args()
+
+
+input=args.input
+NSAMS=args.NSAMS
+fix_sample=args.num_dist
+l=int(float(args.filter.split(',')[0])*100)
+u=int(float(args.filter.split(',')[1])*100)
+
+
 list_of_inputs=[]
 with open(input,'rb') as f:# opens the mpilup. Use mpileup.read() to display content
     for line in f:
@@ -59,29 +68,35 @@ with open(input,'rb') as f:# opens the mpilup. Use mpileup.read() to display con
         line=line+".genolikes"
         list_of_inputs.append(line)
 Nfiles=len(list_of_inputs)
+print('%d files found' %Nfiles)
+print(list_of_inputs)
 
 
 
 ###### Creation of depth files
-
 for g in list_of_inputs:
+    overall_content=""
     contig='.'.join(g.split('.')[:-1]) # Extract name of file for saving results
     with open(g,'rb') as genos: # For each file
-        Depth=[[] for n in range(NSAMS)] # Create empty array for depths
+        Depth=[[] for n in range(NSAMS+1)] # Create empty array for depths
         for line in genos: # Cycle through lines
             line=line.decode().strip('\n') # Convert to text
             line=line.split('\t') # Sperate into elements
             SAM=int(line[2]) #Extract sample value
+            if SAM>len(Depth):
+                print("More samples found than inputted value! Please check NSAMS parameter")
+                sys.exit(1)
             depth=int(line[4]) #Extract depth value
             Depth[SAM-1].append(depth) #stores depths in memory, may be better to not
+        Depth=[d for d in Depth if d !=[]]
     # Store depths in depth files, seperate for each sample
     genos.close() # close genotype likelihood file to save memory
     Sample=0
     for depths in Depth:
         Sample+=1
         # filter depths
-        upper=np.percentile(depths,90) # set upper filter level
-        lower=np.percentile(depths,10) # set lower filter level
+        upper=np.percentile(depths,u) # set upper filter level
+        lower=np.percentile(depths,l) # set lower filter level
         depths = list(filter(lambda x : x < upper and x > lower , depths)) # filter the depths
 
         #set up required value holders
@@ -204,8 +219,10 @@ for g in list_of_inputs:
 
         ### Retrieve parameters for best model from the fit report.
         ### Ensuring if an error occured when fitting  model that the values for that ad more complex models not fitted are 0.
-        
-        Best_NB = AIC_Neg_Binom.index(min(AIC_Neg_Binom))
+        if fix_sample==0:
+            Best_NB = AIC_Neg_Binom.index(min(AIC_Neg_Binom))
+        else:
+            Best_NB = min([int(fix_sample),counter2])-1
 
         #### N_i is the number of failures
         #### P_i is the probability of failure
@@ -222,11 +239,11 @@ for g in list_of_inputs:
             P_3 = re.search('(\n\s*p3:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
             P_4 = re.search('(\n\s*p4:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
             P_5 = re.search('(\n\s*p5:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB])   
-            alpha_1=(1-float(P_1.group(2)))/(-float(P_1.group(2)))
-            alpha_2=(1-float(P_2.group(2)))/(-float(P_2.group(2)))
-            alpha_3=(1-float(P_3.group(2)))/(-float(P_3.group(2)))
-            alpha_4=(1-float(P_4.group(2)))/(-float(P_4.group(2)))
-            alpha_5=(1-float(P_5.group(2)))/(-float(P_5.group(2)))
+            alpha_1=(float(P_1.group(2)))/(1-float(P_1.group(2)))
+            alpha_2=(float(P_2.group(2)))/(1-float(P_2.group(2)))
+            alpha_3=(float(P_3.group(2)))/(1-float(P_3.group(2)))
+            alpha_4=(float(P_4.group(2)))/(1-float(P_4.group(2)))
+            alpha_5=(float(P_5.group(2)))/(1-float(P_5.group(2)))
             beta_1=float(N_1.group(2))
             beta_2=float(N_2.group(2))
             beta_3=float(N_3.group(2))
@@ -257,10 +274,10 @@ for g in list_of_inputs:
             P_2 = re.search('(\n\s*p2:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
             P_3 = re.search('(\n\s*p3:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
             P_4 = re.search('(\n\s*p4:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
-            alpha_1=(1-float(P_1.group(2)))/(-float(P_1.group(2)))
-            alpha_2=(1-float(P_2.group(2)))/(-float(P_2.group(2)))
-            alpha_3=(1-float(P_3.group(2)))/(-float(P_3.group(2)))
-            alpha_4=(1-float(P_4.group(2)))/(-float(P_4.group(2)))
+            alpha_1=(float(P_1.group(2)))/(1-float(P_1.group(2)))
+            alpha_2=(float(P_2.group(2)))/(1-float(P_2.group(2)))
+            alpha_3=(float(P_3.group(2)))/(1-float(P_3.group(2)))
+            alpha_4=(float(P_4.group(2)))/(1-float(P_4.group(2)))
             alpha_5=0
             beta_1=float(N_1.group(2))
             beta_2=float(N_2.group(2))
@@ -289,9 +306,9 @@ for g in list_of_inputs:
             P_1 = re.search('(\n\s*p1:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
             P_2 = re.search('(\n\s*p2:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
             P_3 = re.search('(\n\s*p3:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
-            alpha_1=(1-float(P_1.group(2)))/(-float(P_1.group(2)))
-            alpha_2=(1-float(P_2.group(2)))/(-float(P_2.group(2)))
-            alpha_3=(1-float(P_3.group(2)))/(-float(P_3.group(2)))
+            alpha_1=(float(P_1.group(2)))/(1-float(P_1.group(2)))
+            alpha_2=(float(P_2.group(2)))/(1-float(P_2.group(2)))
+            alpha_3=(float(P_3.group(2)))/(1-float(P_3.group(2)))
             alpha_4=0
             alpha_5=0
             beta_1=float(N_1.group(2))
@@ -318,8 +335,8 @@ for g in list_of_inputs:
             N_2 = re.search('(\n\s*n2:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB])  
             P_1 = re.search('(\n\s*p1:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
             P_2 = re.search('(\n\s*p2:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
-            alpha_1=(1-float(P_1.group(2)))/(-float(P_1.group(2)))
-            alpha_2=(1-float(P_2.group(2)))/(-float(P_2.group(2)))
+            alpha_1=(float(P_1.group(2)))/(1-float(P_1.group(2)))
+            alpha_2=(float(P_2.group(2)))/(1-float(P_2.group(2)))
             alpha_3=0
             alpha_4=0
             alpha_5=0
@@ -344,7 +361,7 @@ for g in list_of_inputs:
             
             N_1 = re.search('(\n\s*n1:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB])  
             P_1 = re.search('(\n\s*p1:\s*)(\d*\.?\d*e?\+?\d*)(\s*\+/-\s*)(\d*.\d*e?\+?\d*)',Neg_Binom[Best_NB]) 
-            alpha_1=(1-float(P_1.group(2)))/(-float(P_1.group(2)))
+            alpha_1=(float(P_1.group(2)))/(1-float(P_1.group(2)))
             alpha_2=0
             alpha_3=0
             alpha_4=0
@@ -366,20 +383,22 @@ for g in list_of_inputs:
             COEF4_NB.append(0)
             COEF5_NB.append(0)          
 
+
+
         #### take basic stats on which model is best and compare
-        Neg_Binom_min.append(min(AIC_Neg_Binom)) # minimum AIC value for the Negative Binomial models
-        Best_Fit_Neg_Binom=(AIC_Neg_Binom.index(min(AIC_Neg_Binom))+1) # Index of best fit model + 1 so that have the number of curves in best fitted model
-        Neg_Binom_Actual.append(Best_Fit_Neg_Binom)
-        #### extract lists of the fitted values of best distributions for plotting
-        try:
-            Neg_Binom_1_Vals = list(Neg_Binom_Vals[0])
-            Neg_Binom_2_Vals = list(Neg_Binom_Vals[1])
-            Neg_Binom_3_Vals = list(Neg_Binom_Vals[2])
-            Neg_Binom_4_Vals = list(Neg_Binom_Vals[3])
-            Neg_Binom_5_Vals = list(Neg_Binom_Vals[4])
-            Neg_Binom_Best_Model_Vals = list(Neg_Binom_Vals[AIC_Neg_Binom.index(min(AIC_Neg_Binom))])   
-        except (OSError,TypeError,ValueError,IndexError):
-            pass
+        #Neg_Binom_min.append(min(AIC_Neg_Binom)) # minimum AIC value for the Negative Binomial models
+        #Best_Fit_Neg_Binom=(AIC_Neg_Binom.index(min(AIC_Neg_Binom))+1) # Index of best fit model + 1 so that have the number of curves in best fitted model
+        #Neg_Binom_Actual.append(Best_Fit_Neg_Binom)
+        #### extract lists of the fitted values of best distributions for plotting 
+        #try:
+        #    Neg_Binom_1_Vals = list(Neg_Binom_Vals[0])
+        #    Neg_Binom_2_Vals = list(Neg_Binom_Vals[1])
+        #    Neg_Binom_3_Vals = list(Neg_Binom_Vals[2])
+        #    Neg_Binom_4_Vals = list(Neg_Binom_Vals[3])
+        #    Neg_Binom_5_Vals = list(Neg_Binom_Vals[4])
+        #    Neg_Binom_Best_Model_Vals = list(Neg_Binom_Vals[AIC_Neg_Binom.index(min(AIC_Neg_Binom))])   
+        #except (OSError,TypeError,ValueError,IndexError):
+        #    pass
 
 
         #### refresh content to be written
@@ -389,17 +408,25 @@ for g in list_of_inputs:
 
 
         #### alphas and betas
-         
+
         alphas="\t".join((str(alpha_1),str(alpha_2),str(alpha_3),str(alpha_4),str(alpha_5)))
         betas="\t".join((str(beta_1),str(beta_2),str(beta_3),str(beta_4),str(beta_5)))    
 
         content="\n".join((alphas,betas))
         content=content+"\n"
 
-        #choose correct file to print results into 
 
-        filename="%s.par" %contig
 
-        with open(filename,'at') as h:
-            h.write(content)
-            h.close()
+        
+
+        overall_content+=content
+
+
+
+
+    #choose correct file to print results into 
+    filename="%s.par" %contig
+
+    with open(filename,'wt') as h:
+        h.write(overall_content)
+        h.close()
