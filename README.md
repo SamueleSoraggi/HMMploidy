@@ -106,7 +106,12 @@ For each basename, there are two outputs:
  
 Initial estimates for alpha and beta to be fed into `hiddenMarkovPloidyShell.R` can be calculated by using `Fitting_dist_contig.py`.
 
-Currently this is performed by running the script with a list of the input files and the number of samples in each (at current the number of samples must be the same for all files but this will be changed)
+Currently this is performed by running the script with a list of the input files and the maximum number of samples within any of the files
+
+### Options
+Along with the input file and maximum number of samples the following options are available:
+* `--num_dist [-d]`: Set the number of distributions in the mixture distribtion fitted to the samples. Note not all samples may be able to support higher numbers of distributions and when they can't be fitted the highest supported will be taken instead. Takes integer values 0-5, default = 0 where 0 means number is not fixed and most likely number is choosen for each sample
+* `--filter [-f]`: Comma seperated values for the upper lower and upper bound for filtering the depths of data. Default = `0,1` where each value is between 0 and 1 and lower bound must be less than upper bound.
 
 #### Output
 
@@ -115,22 +120,68 @@ Output is in the format of a `filename.par` file for each input file in the file
 E.g. an example file of M individuals would look as follows:
 ```
 individual1.alpha1   individual1.alpha2   individual1.alpha3 ... individual1.alphaN
-individual2.alpha1   individual2.alpha2   individual2.alpha3 ... individual2.alphaN
+individual2.beta1   individual2.beta2   individual2.beta3 ... individual2.betaN
 .
 .
 .
 individualM.alpha1   individualM.alpha2  individualM.alpha3 ... individualM.alphaN
+individualM.beta1   individualM.beta2  individualM.beta3 ... individualM.betaN
 ```
 ### Example
 
 Run the script as follows:
 
 ```Shell
-python Fitting_dist_contig.py basenames.filelist NSAMS  
+python Fitting_dist_contig.py basenames.filelist NSAMS --num_dist 4 --filter 0.1,0.9
 ```
-Where basenames.filelist is the file containg the list of input files and NSAMS is the number of individuals in each sample.
+Where basenames.filelist is the file containg the list of input files and NSAMS is the maximum number of individuals from any sample
 
-#### To be added
-* Allow seperate number of individuals in each input file
-* change tab seperated output to comma seperated output
-* Add option to fix ploidy level for alphas and betas
+
+## Generating genolikelihoods and inferring probability of aneuploidy
+
+Genolikelihoods can be calculated and recorded as a `.genolikes` file by using `Genotype_Likelihoods.py`. This will also return useful information about the probability of aneuploidy with a set of samples to the screen and record an inferred ploidy for each individual in the form of a `.ploids` file
+
+### Inputs
+
+`Genotype_Likelihoods.py` is run with the required arguments of:
+* `Input`: A gzipped mpileup file containing the data for the samples to be analysed
+* `Output`: The name for the gzipped `.genolikes` file to be produced
+* `Output2`: The name for the gzipped `.ploids` file to be produced
+* `NSAMS`: The number of samples in the mpileup file
+
+Additionally the following options are available:
+* `--Inbreeding [-i]`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
+* `--data_used [-d]`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in [0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
+* `--min_non_major_freq [-m]`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
+* `--max_minor2_freq [-M2]`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `--max_minor3_freq [-M3]`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `--min_global_depth [-dp]`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
+
+### Outputs
+
+On screen outputs will give you the number of bases included in the calculations, the most likely ploidy based on genoptype likelihoods alone (Inferred ploidy), The bootstrap distribution of this inferred ploidy by taking random bases, The probability there ius aneuploidy in the entire dataset, the list of samples likely to not have aneuploidy and their inferred baseline ploidy, the list of samples likely to have aneuploidy and the probability of aneuploidy within the dataset after the samples inferred tro have aneuploidy are removed.
+
+
+In addition to the on-screen outputs the two output files are as follows:
+
+#### `.genolikes`
+where the columns represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
+
+#### `.ploids`
+Where the first row represents the inferred ploidy for each individual in the data set and the second row is a list of 1 and 0 where 1 represents the sample was inferred to have aneuploidy and 0 that it was not inferred to have aneuploidy.
+
+
+### Example
+
+With an mpileup file `test.mpileup.gz` with `10` samples the program can be run as follows:
+
+
+```Shell
+python Genotype_Likelihoods.py test.mpileup.gz test.genolikes.gz test.ploids.gz 10 -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 -0.1 -dp 5
+```
+
+
+
+
+
+
