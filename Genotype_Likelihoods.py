@@ -35,6 +35,7 @@ parser.add_argument("NSAMS",type=int,help="Number of samples in the mpileupfile"
 parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--data_used",help="Fraction of data to be used in the calculations",default=1)
 parser.add_argument("-m","--min_non_major_freq",type=float,help="Set the minimum frequency of non major alleles for bases to be included in the calculations",default=0.2)
+parser.add_argument("-q","--min_quality_score",type=int,help="Set the minimum quality score of a read to be included in the calculation",default=1)
 parser.add_argument("-dp","--min_global_depth",type=float,help="Set the minimum global depth of a base to be included in calculations",default=0)
 parser.add_argument("-M2","--max_minor2_freq",type=float,help="Set the maximum frequency of third most prolific alleles for bases to be included in the calculations",default=0.1)
 parser.add_argument("-M3","--max_minor3_freq",type=float,help="Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations",default=0.2)
@@ -99,7 +100,9 @@ with gzip.open(input,'rb') as gz:# opens the mpilup. Use mpileup.read() to displ
         if len(myReads.base)!=len(myReads.base_quality):
             sys.exit("Conversion not succesful")
         #filter by quality
-        #currently just removing X                        
+        [bases,qualities] = generics.filter(myReads,args.min_quality_score)
+        myReads=Reads(bases,qualities)
+                     
         #find all indexes of occurances to be filtered out
         index_of_X=[]
         index=-1
@@ -114,6 +117,8 @@ with gzip.open(input,'rb') as gz:# opens the mpilup. Use mpileup.read() to displ
         for i in index_of_X:
             myReads.base_quality = myReads.base_quality[:i-count] + myReads.base_quality[i+1-count:]
             count+=1
+
+        
 
 
 
@@ -164,15 +169,6 @@ with gzip.open(input,'rb') as gz:# opens the mpilup. Use mpileup.read() to displ
                         myReads = Reads(l[(n-1)*3+4],l[(n-1)*3+5])
                         (bases, indexDelN) = generics.convertSyms(myReads,mySite)
                         myReads = Reads(bases, myReads.base_quality)
-                        # Take a sample of the bases so that the proportion of data used is as required
-                        data_prop = math.ceil(len(myReads.base)*Data_used) # calculate how many bases to include for proportion of sample
-                        rand_samp = random.sample(range(0,len(myReads.base)),data_prop)
-                        base = ""
-                        qualities = ""
-                        for r in rand_samp:
-                            base+=myReads.base[r]
-                            qualities+=myReads.base_quality[r]
-                        myReads=Reads(base,qualities)
 
                         #establish prior probabilities
                         HWE_Prob_hap = [P,Q]
@@ -185,6 +181,8 @@ with gzip.open(input,'rb') as gz:# opens the mpilup. Use mpileup.read() to displ
                         HWE_Prob_oct = [(1-F[n-1])*(P**8)+F[n-1]*P,(1-F[n-1])*8*(P**7)*Q,(1-F[n-1])*28*(P**6)*(Q**2),(1-F[n-1])*56*(P**5)*(Q**3),(1-F[n-1])*70*(P**4)*(Q**4),(1-F[n-1])*56*(P**3)*(Q**5),(1-F[n-1])*28*(P**2)*(Q**6),(1-F[n-1])*8*P*(Q**7),(1-F[n-1])*(Q**8)+F[n-1]*Q]
 
                         #filter by quality
+                        [bases,qualities] = generics.filter(myReads,args.min_quality_score)
+                        myReads=Reads(bases,qualities)
                         #find all indexes of occurances to be filtered out
                         index_of_X=[]
                         index=-1
@@ -201,6 +199,15 @@ with gzip.open(input,'rb') as gz:# opens the mpilup. Use mpileup.read() to displ
                             count+=1
                         major_count=generics.calcAlleleFreq(major,myReads)
                         minor_count=generics.calcAlleleFreq(minor,myReads)
+                        # Take a sample of the bases so that the proportion of data used is as required
+                        data_prop = math.ceil(len(myReads.base)*Data_used) # calculate how many bases to include for proportion of sample
+                        rand_samp = random.sample(range(0,len(myReads.base)),data_prop)
+                        base = ""
+                        qualities = ""
+                        for r in rand_samp:
+                            base+=myReads.base[r]
+                            qualities+=myReads.base_quality[r]
+                        myReads=Reads(base,qualities)
                         #find sample depth of filtered data    
                         sampleDepth = len(myReads.base)
                         p=[] # list to fill with probabilities for this base
@@ -452,8 +459,8 @@ for sample in range(0,Original_sample_number):
             samples_removed.remove(sample)
         else:
             aneuploid=1
-    print(list(Overall_Prob[sample]).index(max(list(Overall_Prob[sample])))+1)
-    print(generics.dist(ExpectedPloidy[sample]).index(max(generics.dist(ExpectedPloidy[sample])))+1)
+    #print(list(Overall_Prob[sample]).index(max(list(Overall_Prob[sample])))+1)
+    #print(generics.dist(ExpectedPloidy[sample]).index(max(generics.dist(ExpectedPloidy[sample])))+1)
     ploidies=ploidies+str(sam_ploid)+"\t"
     aneuploidy=aneuploidy+str(aneuploid)+"\t"
 ploidies=ploidies.strip("\t")+"\n"

@@ -466,7 +466,19 @@ def dist(ploidies):
     return dist
 
 
+def filter(reads,min_quality_score):
+    phredScale=33
+    bases=""
+    qualities=""
+    for i in range(0,len(reads.base)):
+        if ord(reads.base_quality[i])-phredScale>min_quality_score:
+            bases+=reads.base[i]
+            qualities+=reads.base_quality[i]
+    return(bases,qualities)
+
+
     
+            
 
     
             
