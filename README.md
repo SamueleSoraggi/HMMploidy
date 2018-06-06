@@ -1,5 +1,5 @@
 # Hidden Markov Ploidy
-Tool for inferring ploidy levels, testing for aneuploidy and other stuff.
+Tools for inferring ploidy levels, testing for aneuploidy and other stuff.
 Calculating its allele frequencies and genotype likelihoods requires to download the following tool
 * [ANGSD](https://github.com/ANGSD/angsd). Once ANGSD is downloaded, substitute the file `abcFreq.cpp` with the one in this github repository, and thereafter compile ANGSD. This allows to model allele frequencies for poliploidy genomes and not only for the diploid case.
 * [NGSPOLY](https://github.com/ImperialCollegeLondon/ngsJulia/tree/master/ngsPoly)
@@ -9,6 +9,7 @@ Calculating its allele frequencies and genotype likelihoods requires to download
 `simulationScript.sh`: simulate poliploidy data: set the ploidy numbers, haploid depths and number of individuals editing the options in the file (ps: I will make this as a proper script with inputs from command line).
 
 #### Input options 
+
 * `ploidy`: vector with the desired sequence of ploidy numbers  
 * `depth`: vector with the desired haploid depths
 * `sites`: number of sites for each ploidy number
@@ -25,17 +26,9 @@ In the folder `$FOLDER`, there are four groups of data used in ploidy inference,
 * `.mpileup` mpileup file of the simulated genome
 * `.par` initial estimate for ploidy levels parameters. Each two lines represent the alpha and beta parameters of negative binomial distributions modelled on observed depths of one individual.
 
-
-
 ## Inference of ploidy numbers from data
 
-Inference of ploidy numbers is performed through the R script `hiddenMarkovPloidyShell.R`. This can be used in two different ways:
-
-1) giving in input the base name of a single file and its initial parameters alpha and beta
-```Shell
-   Rscript hiddenMarkovPloidyShell.R file=#FILE  maxPloidy=$MAXP alpha=$ALPHAS  beta=$BETAS  wind=$WS   chosenInd=$IND  quantileTrim=$Q  minInd=$M
-```
-2) giving in input a list of base names
+Inference of ploidy numbers is performed through the R script `hiddenMarkovPloidyShell.R
 
 ```Shell
    Rscript hiddenMarkovPloidyShell.R  fileList=$LIST  maxPloidy=$MAXP  wind=$WS  chosenInd=$IND  quantileTrim=$Q   minInd=$M
@@ -43,14 +36,13 @@ Inference of ploidy numbers is performed through the R script `hiddenMarkovPloid
 
 #### Options
 
-* `file`: base name of a group of files with formats `.genolikes`,`.mafs`,`.mpileup`,`.par`.
-* `fileList`: list of base names for group of files with formats `.genolikes`,`.mafs`,`.mpileup`,`.par`.
+* `fileList`: list of base names for group of files with formats `.genolikes`,`.par`. Alternatively, use `file` and write directly the basename of the desired files in format `.genolikes`,`.par`
 * `maxPloidy`: max number of ploidy levels (default 6) 
 * `alpha`: comma separated values of alphas for the depth distributions (default NA)
 * `beta`: comma separated values of alphas for the depth distributions (default NA)
 * `chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
 * `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
-* `minInd`: min number of individuals with data for which a locus is usedconsider loci 
+* `minInd`: min number of individuals with data for which a locus is usedconsider loci (default 1)
 
 ### Example: Analyze ploidy numbers from simulations
 
