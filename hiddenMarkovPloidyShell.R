@@ -251,46 +251,6 @@ return(out);
 )
 
 
-
-
-
-
-
-
-
-##fast function to match loci between ANGSD .maf file (freq) and .genolikes file (refer)
-cppFunction('NumericVector matchSites(NumericVector refer, NumericVector freq) {
-  int nRefer = refer.size();
-  int nFreq = freq.size();
-  NumericVector out(2*nRefer);
-  int found = 0;
-  int j = 0;
-  int k = 0;
-  int i=0;
-
-  while (found == 0) {
-    if (refer[i] == freq[j]){
-         out[2*k] = j;
-         out[2*k+1] = i;
-         j++;
-         i++;
-         k++;
-    }
-    if (refer[i] < freq[j] & i < (nRefer - 1) )
-         i++;
-    if (refer[i] > freq[j] & j < (nFreq-1) )
-         j++;
-    if(i==nRefer)
-      found = 1;
-    if( j>=(nRefer-1) )
-      found = 1;
-  }
-
-
-  return out[seq(0,(2*k-1))];
-}')
-
-
 ##Estep for the conditional EM optimization
 EStep <- function(count,delta,TRANS,alpha,beta,genolike){
 
@@ -924,10 +884,9 @@ for(i in 1:length(fileVector)){
     #FREQFILE <- fread(input=angsdVector[i],sep="\t",showProgress=TRUE,header=TRUE,data.table=FALSE)
     rowsGL <- dim(GL)[1]
     nInd <- length( unique( GL[,3] ) )
-    sites <- unique( GL[ ,2] )
-    
+    sites <- unique( GL[ ,2] )    
     DP <- GL[ ,5]
-    #TRUEREF <- GL[seq(1,rowsGL,nInd),6]
+
 
     #calculate allele frequencies
     eps = .05
@@ -936,25 +895,7 @@ for(i in 1:length(fileVector)){
     freqs <- alleleFrequencies(majorReads,minorReads,nInd,minInd,eps)
     
     GL <- GL[ ,-c(1:9)]
-    #FQInd <- FREQFILE[ ,7] #per-loci Nr individuals in frequency estimate
     
-    #FF <- FREQFILE[ ,2] #sites to be kept...
-    #FF <- FF[FQInd>=minInd] #...filtered using FQInd
-
-    #sameSites <- matchSites(sites,FF) + 1 #Format matching with .mafs output (+1=adapting indexing RC++)
-    #keepFQREF = sameSites[seq(1,length(sameSites),2)]
-    #keepTRUEREF = sameSites[seq(2,length(sameSites),2)]
-    
-    #FQ <- FREQFILE[keepFQREF,6] 
-    #FQREF <- FREQFILE[keepFQREF,3] #reference in the .mafs file
-    #TRUEREF = TRUEREF[keepTRUEREF]
-    
-    #sameREF <- (TRUEREF==FQREF) #reference matching with the one in .genolikes
-    #sameREF <- sameREF[!is.na(sameREF)]
-    
-    #freqs <- as.numeric(FQ)
-    #freqs[!sameREF] <- 1-freqs[!sameREF] #for freq f of non-matching reference allele, do 1-f
-
     if(!isNumericChosenInd)
         chosenInd <- 1:nInd
 
