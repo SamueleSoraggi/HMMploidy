@@ -49,13 +49,14 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
            wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
            #so I have not implemented a list of chromosomes/loci intervals to read. it might come if we decide it is smart.
            maxPloidy = 6, #maximum ploidy. Must change with choice of potential ploidies (e.g. haploid might be excluded a priori by users)
-           minInd = 1,#min ind having reads #also in ANGSD, better to have it here as well
-           chosenInd = NA,#which Individual to consider (one at the time for now)
+           minInd = 1, #min ind having reads #also in ANGSD, better to have it here as well
+           chosenInd = NA, #which Individual to consider (one at the time for now)
            #Must implement option for: all ind together or one at the time.
            #isSims = FALSE, #data is simulated. if TRUE fileList will also refer to file(s) with true ploidies
            alpha = NA, #alpha parameters comma separated
            beta = NA, #beta parameters comma separated
-           quantileTrim ="0,1"#quantiles for trimming
+           quantileTrim ="0,1", #quantiles for trimming
+           eps = .05 #effect of sequencing and mapping error
            )
 
 #if no argument aree given prints the need arguments and the optional ones with default
@@ -67,7 +68,8 @@ des<-list(fileList="[string] list of .genolike and phat.mafs and eventual .windo
           isSims="[bool] data is simulated using the simulation script (FALSE)",
           alpha ="[numerics] alpha parameters comma separated (NA, read from .par file)",
           beta="[numerics] beta parameters comma separated (NA, read from .par file)",
-          quantileTrim="[integers] comma-separated quantiles for trimming (0,1)"
+          quantileTrim="[integers] comma-separated quantiles for trimming (0,1)",
+          eps="sequencing/mapping error rate "
           )
   
 ##get arguments and add to workspace
@@ -137,7 +139,7 @@ if(!(is.na(alpha) | is.na(beta))){
 #print(beta)
 
 ##print Rscript input
-cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " chosenInd: ", chosenInd ," maxPloidy: ", maxPloidy, " alpha: ", alpha, " beta: ", beta, " quantileTrim: ", quantileTrim,  "\n-----------\n" )
+cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " chosenInd: ", chosenInd ," maxPloidy: ", maxPloidy, " alpha: ", alpha, " beta: ", beta, " quantileTrim: ", quantileTrim, " eps: ", eps,  "\n-----------\n" )
 
 ############################
 ### Supporting functions ###
@@ -198,6 +200,62 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
     legend(x=1, y = max(hmm$count[,1])+.25*max(hmm$count[,1]), legend=c("Mean Depth", "Distribution Mean"), col = c("deepskyblue1","coral"), lwd = rep(3,3), lty=c(NA,1), pch = c(20,NA), bty = "n", ncol = 2, cex=1.4)
 
 }
+
+
+cppFunction('NumericVector alleleFrequencies(NumericVector major,NumericVector minor, int nInd, int minInd, double eps){
+
+int totCountsNorm = 0;
+int sites = major.size()/nInd;
+NumericVector out( sites );
+int indWithData;
+NumericVector pis( nInd );
+NumericVector wis( nInd );
+int ni = 0;
+int nt = 0;
+int normC;
+
+for(int s=0;s<sites;s++){
+    totCountsNorm = 0;
+    indWithData = nInd;
+    normC = 0;
+    for(int i=0;i<nInd;i++){
+        totCountsNorm += major[s*nInd+i] + minor[s*nInd+i];
+    }
+    //if the site is variable
+    for(int i=0;i<nInd;i++){
+       ni = minor[s*nInd+i];
+       nt = major[s*nInd+i] + minor[s*nInd+i]; 
+       if(nt==0){//if we dont have any reads for individual i
+         indWithData--;
+         pis[i] = 0;
+         wis[i] = 0;
+         continue;
+       }
+       pis[i] = (ni-eps*nt)/(nt*(1-2*eps));
+       wis[i] = (double)nt/totCountsNorm; //weights infinite ploidy
+     }
+
+  if(indWithData < minInd){
+     out[s] = -1;
+  }
+  else{
+     out[s] = 0;
+     for(int i=0;i<nInd;i++)
+        out[s] += wis[i]*pis[i];     
+  }
+
+}
+return(out);
+
+}'
+)
+
+
+
+
+
+
+
 
 
 ##fast function to match loci between ANGSD .maf file (freq) and .genolikes file (refer)
@@ -863,38 +921,40 @@ for(i in 1:length(fileVector)){
     cat("==> Analyze ", filez[i], "\n",sep="")
     ##read in the data from .mafs and .genolikes files
     GL <- fread(input=fileVector[i],sep="\t",showProgress=TRUE,header=FALSE,data.table=FALSE)
-    FREQFILE <- fread(input=angsdVector[i],sep="\t",showProgress=TRUE,header=TRUE,data.table=FALSE)
+    #FREQFILE <- fread(input=angsdVector[i],sep="\t",showProgress=TRUE,header=TRUE,data.table=FALSE)
     rowsGL <- dim(GL)[1]
     nInd <- length( unique( GL[,3] ) )
     sites <- unique( GL[ ,2] )
     
     DP <- GL[ ,5]
-    TRUEREF <- GL[seq(1,rowsGL,nInd),6]
-    GL <- GL[ ,-c(1:7)]
-    FQInd <- FREQFILE[ ,7] #per-loci Nr individuals in frequency estimate
-    #print(nInd)
-    FF <- FREQFILE[ ,2] #sites to be kept...
-    FF <- FF[FQInd>=minInd] #...filtered using FQInd
-    #print(FF[1:20])
-    #print(sites[1:20])
-    sameSites <- matchSites(sites,FF) + 1 #Format matching with .mafs output (+1=adapting indexing RC++)
-    keepFQREF = sameSites[seq(1,length(sameSites),2)]
-    keepTRUEREF = sameSites[seq(2,length(sameSites),2)]
-    #print(sameSites[1:40])
-    FQ <- FREQFILE[keepFQREF,6] 
-    FQREF <- FREQFILE[keepFQREF,3] #reference in the .mafs file
-    TRUEREF = TRUEREF[keepTRUEREF]
-    #print(length(TRUEREF))
-    #print(length(FQREF))
-    #print(head(TRUEREF))
-    #print(head(FQREF))
-    sameREF <- (TRUEREF==FQREF) #reference matching with the one in .genolikes
-    sameREF <- sameREF[!is.na(sameREF)]
-    #print(head(sameREF))
-    #print(TRUEREF[is.na(sameREF)])
-    #print(FQREF[is.na(sameREF)])    
-    freqs <- as.numeric(FQ)
-    freqs[!sameREF] <- 1-freqs[!sameREF] #for freq f of non-matching reference allele, do 1-f
+    #TRUEREF <- GL[seq(1,rowsGL,nInd),6]
+
+    #calculate allele frequencies
+    eps = .05
+    majorReads <- GL[,8]
+    minorReads <- GL[,9]
+    freqs <- alleleFrequencies(majorReads,minorReads,nInd,minInd,eps)
+    
+    GL <- GL[ ,-c(1:9)]
+    #FQInd <- FREQFILE[ ,7] #per-loci Nr individuals in frequency estimate
+    
+    #FF <- FREQFILE[ ,2] #sites to be kept...
+    #FF <- FF[FQInd>=minInd] #...filtered using FQInd
+
+    #sameSites <- matchSites(sites,FF) + 1 #Format matching with .mafs output (+1=adapting indexing RC++)
+    #keepFQREF = sameSites[seq(1,length(sameSites),2)]
+    #keepTRUEREF = sameSites[seq(2,length(sameSites),2)]
+    
+    #FQ <- FREQFILE[keepFQREF,6] 
+    #FQREF <- FREQFILE[keepFQREF,3] #reference in the .mafs file
+    #TRUEREF = TRUEREF[keepTRUEREF]
+    
+    #sameREF <- (TRUEREF==FQREF) #reference matching with the one in .genolikes
+    #sameREF <- sameREF[!is.na(sameREF)]
+    
+    #freqs <- as.numeric(FQ)
+    #freqs[!sameREF] <- 1-freqs[!sameREF] #for freq f of non-matching reference allele, do 1-f
+
     if(!isNumericChosenInd)
         chosenInd <- 1:nInd
 
@@ -918,19 +978,18 @@ for(i in 1:length(fileVector)){
     
     ##select single individual depth and genolikes
         idxSingle <- seq(whichInd,rowsGL,nInd)
-        DPsingle <- DP[idxSingle]; GLsingle <- GL[idxSingle, ]
+        DPsingle <- DP[idxSingle]; GLsingle <- GL[idxSingle, ] #individual depth/genolikes
     ##trim the depth at the chosen quantile
         quantiles <- eval( parse( text=paste("c(",quantileTrim,")",sep="") ) )
         q <- quantile( DPsingle, quantiles )  
         idx <- which( DPsingle<=as.numeric(q[2]) & DPsingle>=as.numeric(q[1]) )
-        DPsingle <- DPsingle[idx]
-        GLsingle <- GLsingle[idx, ]
-        FQ <- FQ[idx]
-        sitesIndiv <- sites[idx] #individual filtered sites
-        freqsIndiv <- freqs[idx] #individual filtered frequencies
+        DPsingle <- DPsingle[idx] #individual filtered datad
+        GLsingle <- GLsingle[idx, ] #...""
+        sitesIndiv <- sites[idx] #......""
+        freqsIndiv <- freqs[idx] #......""
         idxTot = as.vector( sapply(idx, function(j) ((j-1)*nInd+1):(j*nInd) ) )
-        GLfiltered <- GL[idxTot, ] #remember the filtering of GL
-        DPfiltered <- DP[idxTot]
+        GLfiltered <- GL[idxTot, ] #all data filtered
+        DPfiltered <- DP[idxTot] #......""
 
         ##find SNPs with thresholds .1<f<.9
         findSNP <- which(freqsIndiv>.1 & freqsIndiv<.9)
@@ -946,7 +1005,7 @@ for(i in 1:length(fileVector)){
             for(pp in 1:maxPloidy) #change ploidy
                 geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
             ##...and per window
-            geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP)) 
+            geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP) )
         }
         ##mean depth over each locus in a window (not only on SNPs)
         ##use sumGeno(DPsingle,wind,sitesIndiv,sitesSNP,avg=TRUE)
