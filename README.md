@@ -22,7 +22,6 @@ Calculating its allele frequencies and genotype likelihoods requires to download
 
 In the folder `$FOLDER`, there are four groups of data used in ploidy inference, one for each combination of depth and number of individuals (4 combinations in this example) in the following formats and with same basename:
 * `.genolikes` where the columns represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 6 (7 columns)
-* `.mafs` output from ANGSD calculating allele frequencies at each locus. Each column represents: chromosome, site number, major allele, minor allele, reference allele, estimated frequency, number of individuals with data.
 * `.mpileup` mpileup file of the simulated genome
 * `.par` initial estimate for ploidy levels parameters. Each two lines represent the alpha and beta parameters of negative binomial distributions modelled on observed depths of one individual.
 
@@ -31,18 +30,18 @@ In the folder `$FOLDER`, there are four groups of data used in ploidy inference,
 Inference of ploidy numbers is performed through the R script `hiddenMarkovPloidyShell.R
 
 ```Shell
-   Rscript hiddenMarkovPloidyShell.R  fileList=$LIST  maxPloidy=$MAXP  wind=$WS  chosenInd=$IND  quantileTrim=$Q   minInd=$M
+   Rscript hiddenMarkovPloidyShell.R  fileList=$LIST  maxPloidy=$MAXP\
+           wind=$WS  chosenInd=$IND  quantileTrim=$Q   minInd=$M eps=$E
 ```
 
 #### Options
 
 * `fileList`: list of base names for group of files with formats `.genolikes`,`.par`. Alternatively, use `file` and write directly the basename of the desired files in format `.genolikes`,`.par`
 * `maxPloidy`: max number of ploidy levels (default 6) 
-* `alpha`: comma separated values of alphas for the depth distributions (default NA)
-* `beta`: comma separated values of alphas for the depth distributions (default NA)
 * `chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
 * `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
 * `minInd`: min number of individuals with data for which a locus is usedconsider loci (default 1)
+* `eps`: sequencing/mapping error rate (default 0.005)
 
 ### Example: Analyze ploidy numbers from simulations
 
@@ -60,9 +59,8 @@ Run the script:
 bash simulationScript.sh
 ```
 
-In `$FOLDER`, for each base name of a simulated dataset, there are four files used for our analysis. For example, for `poliploidyGenome.DP3.NIND10`, one can find
+In `$FOLDER`, for each base name of a simulated dataset, there are files used for our analysis. For example, for `poliploidyGenome.DP3.NIND10`, one can find
 * `poliploidyGenome.DP3.NIND10.genolikes`
-* `poliploidyGenome.DP3.NIND10.mafs`
 * `poliploidyGenome.DP3.NIND10.mpileup`
 * `poliploidyGenome.DP3.NIND10.par`
 
