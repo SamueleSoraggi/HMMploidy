@@ -72,7 +72,6 @@ print('%d files found' %Nfiles)
 print(list_of_inputs)
 
 
-
 ###### Creation of depth files
 for g in list_of_inputs:
     overall_content=""
@@ -98,7 +97,7 @@ for g in list_of_inputs:
         upper=np.percentile(depths,u) # set upper filter level
         lower=np.percentile(depths,l) # set lower filter level
         depths = list(filter(lambda x : x < upper and x > lower , depths)) # filter the depths
-
+        
         #set up required value holders
 
         Neg_Binom_Actual=[]
