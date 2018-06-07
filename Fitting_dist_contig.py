@@ -48,14 +48,12 @@ def neg_binomial_5(Neg_Binom_Params):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="File containing a list of basenames for the .genolike files to be used")
-parser.add_argument("NSAMS",type=int,help="Maximum number of samples in any file in input list")
 parser.add_argument("-d","--num_dist",help="Fix the number of distributions in the mixture distribution",default=0)
 parser.add_argument("-f","--filter",help="comma seperated decimals for upper and lower levels of filtering. Default = 0,1",default='0,1')
 args=parser.parse_args()
 
 
 input=args.input
-NSAMS=args.NSAMS
 fix_sample=args.num_dist
 l=int(float(args.filter.split(',')[0])*100)
 u=int(float(args.filter.split(',')[1])*100)
@@ -76,6 +74,25 @@ print(list_of_inputs)
 for g in list_of_inputs:
     overall_content=""
     contig='.'.join(g.split('.')[:-1]) # Extract name of file for saving results
+    print("Using file: {}".format(g))
+    # Extract NSAMS
+    with open(g,'rb') as genos:
+        old_sam=0
+        test=0
+        while test==0:
+            for line in genos:
+                line=line.decode().strip('\n') # Convert to text
+                line=line.split('\t') # Sperate into elements
+                SAM=int(line[2]) #Extract sample value
+                if SAM>old_sam:
+                    old_sam=SAM
+                else:
+                    NSAMS=old_sam
+                    test=1
+    print("NSAMS = {}".format(NSAMS))
+                
+
+
     with open(g,'rb') as genos: # For each file
         Depth=[[] for n in range(NSAMS+1)] # Create empty array for depths
         for line in genos: # Cycle through lines
