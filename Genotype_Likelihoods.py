@@ -43,6 +43,7 @@ args = parser.parse_args()
 
 input = args.input #Input file in form of gziped mpileup
 list_of_inputs=[]
+list_of_inputs2=[]
 with open(input,'rb') as f:# opens the mpilup. Use mpileup.read() to display content
     for line in f:
         line=line.decode().strip('\n')# Convert bytes into string
@@ -55,16 +56,15 @@ print(list_of_inputs)
 for g in list_of_inputs: #output files names
     output = g+".genolikes.gz" # output file to contain genotype likelihoods
     #output_2 = g+".ploids" # output file to contain inferred ploidies and whether aneuploidy or not
-
-for g in list_of_inputs: #formatting input files names
+    
     directory = g.split('/')
     if len(directory) == 1:
-        list_of_inputs.append("./"+line+".mpileup.gz")
+        gInput="./"+g+".mpileup.gz"
     else:
-        list_of_inputs.append(line+".mpileup.gz")
+        gInput=g+".mpileup.gz"
 
-for g in list_of_inputs:        
-    with gzip.open(g) as f:
+    print("    Analyzing file "+gInput)
+    with gzip.open(gInput) as f:
         first_line = f.readline()
         Data=first_line.decode().strip('\n')# Convert bytes into string
         l = Data.split('\t')
@@ -95,11 +95,11 @@ for g in list_of_inputs:
     base_number=0 # count for bases
     list_of_window=[] 
     list_of_window2=[]
-    gzip.open(directory+'/'+output,'wt') 
-    gzip.open(directory+'/'+output_2,'wt')
+    gzip.open(output,'wt') 
+    #gzip.open(directory+'/'+output_2,'wt')
     no_bases=0
     total_bases=0
-    with gzip.open(directory+'/'+g,'rb') as gz:# opens the mpilup. Use mpileup.read() to display content
+    with gzip.open(gInput,'rb') as gz:# opens the mpilup. Use mpileup.read() to display content
         for line in gz:
             Data=line.decode().strip('\n')# Convert bytes into string
             l = Data.split('\t')
@@ -139,11 +139,6 @@ for g in list_of_inputs:
             for i in index_of_X:
                 myReads.base_quality = myReads.base_quality[:i-count] + myReads.base_quality[i+1-count:]
                 count+=1
-
-
-
-
-
 
 
             globalDepth = len(myReads.base)
@@ -291,7 +286,7 @@ for g in list_of_inputs:
                             content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,haploid)),"\t".join(map(str,diploid)),"\t".join(map(str,triploid)),"\t".join(map(str,tetraploid)),"\t".join(map(str,pentaploid)),"\t".join(map(str,hexaploid)),"\t".join(map(str,heptaploid)),"\t".join(map(str,octaploid)))
                             content=sep.join(content)
                             content=content+"\n"
-                            with gzip.open(directory+'/'+output,'at+') as f: 
+                            with gzip.open(output,'at+') as f: 
                                 f.write(content)
                             content=""
 
