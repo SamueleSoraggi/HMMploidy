@@ -1,9 +1,9 @@
 # Hidden Markov Ploidy
 Tools for inferring ploidy levels, testing for aneuploidy and other stuff.
-Calculating its allele frequencies and genotype likelihoods requires to download the following tool
-* [ANGSD](https://github.com/ANGSD/angsd). Once ANGSD is downloaded, substitute the file `abcFreq.cpp` with the one in this github repository, and thereafter compile ANGSD. This allows to model allele frequencies for poliploidy genomes and not only for the diploid case.
-* [NGSPOLY](https://github.com/ImperialCollegeLondon/ngsJulia/tree/master/ngsPoly)
-* [JULIA vers >= 0.4.7](https://julialang.org/downloads/), with `GZip` and `ArgParse` packages
+Calculating its allele frequencies and genotype likelihoods requires to download the followings:
+
+* python 3, with packages ``
+* R, with packages `pracma, data.table, Rcpp`
 
 ## Generating genotype likelihoods
 
@@ -78,8 +78,8 @@ $PATH/python3 Genotype_Likelihoods.py test.mpileup.gz
 ```
 
 Run the analysis of ploidy numbers for the four simulated datasets. Use window size 100, analyze all the individuals, consider the max amount of ploidys being 5, do not trim the data, and use loci where there is data for >=3 individuals
-
 ```Shell
+gunzip $FOLDER/*.genolikes.gz #the R script needs gunzipped genolikes files
 Rscript hiddenMarkovPloidyShell.R  fileList=names.poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=3
 ```
 
