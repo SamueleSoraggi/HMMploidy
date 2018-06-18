@@ -10,7 +10,7 @@ do
     minInd=1
     FOLDER=.
     SCRIPTFOLDER=.
-    BASENAME=$out
+    BASENAME=out
     
     case $key in
 	-s|--simulatorFolder)
