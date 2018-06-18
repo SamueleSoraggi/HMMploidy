@@ -5,34 +5,70 @@ Calculating its allele frequencies and genotype likelihoods requires to download
 * [NGSPOLY](https://github.com/ImperialCollegeLondon/ngsJulia/tree/master/ngsPoly)
 * [JULIA vers >= 0.4.7](https://julialang.org/downloads/), with `GZip` and `ArgParse` packages
 
-## Poliploid data simulations
-`simulationScript.sh`: simulate poliploidy data: set the ploidy numbers, haploid depths and number of individuals editing the options in the file (ps: I will make this as a proper script with inputs from command line).
+## Generating genotype likelihoods
 
-#### Input options 
+Overview: calculate genotype likelihoods
 
-* `ploidy`: vector with the desired sequence of ploidy numbers  
-* `depth`: vector with the desired haploid depths
-* `sites`: number of sites for each ploidy number
-* `samples`: number of individuals to simulate
-* `BASENAME`: base name for the output files 
-* `FOLDER`: folder where to save the outputs
-* In the ANGSD command called in the script, see the explanation for the `minInd` and `minIndDepth` filtering options.
+`Genotype_Likelihoods.py names.filelist`
 
-#### Output: 
+### Input
 
-In the folder `$FOLDER`, there are four groups of data used in ploidy inference, one for each combination of depth and number of individuals (4 combinations in this example) in the following formats and with same basename:
-* `.genolikes` where the columns represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 6 (7 columns)
-* `.mpileup` mpileup file of the simulated genome
-* `.par` initial estimate for ploidy levels parameters. Each two lines represent the alpha and beta parameters of negative binomial distributions modelled on observed depths of one individual.
+* `Input`: name of a text file containing the suffix of each `.mpileup.gz` file
 
-## Inference of ploidy numbers from data
+Additionally the following options are available:
 
-Inference of ploidy numbers is performed through the R script `hiddenMarkovPloidyShell.R
+* `--Inbreeding [-i]`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
+* `--downsampling [-d]`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in [0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
+* `--min_non_major_freq [-m]`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
+* `--max_minor2_freq [-M2]`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `--max_minor3_freq [-M3]`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `--min_global_depth [-dp]`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
+
+### Output
+
+A `.genolikes` file where the columns represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
+
+### Syntax Example
 
 ```Shell
-   Rscript hiddenMarkovPloidyShell.R  fileList=$LIST  maxPloidy=$MAXP\
-           wind=$WS  chosenInd=$IND  quantileTrim=$Q   minInd=$M eps=$E
+python Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 -0.1 -dp 5
 ```
+
+## Simulation of polyploid data mpileup files
+
+Overview: simulate poliploidy `mpileup.gz` files
+
+`simulationScript.sh -s $SCRIPTFOLDER -f $FOLDER -o $OUTNAME -p $PLOIDY -d $DEPTH -n $INDIVIDUALS -l $LOCI`
+
+### Input options 
+
+* `-s` or `--simulatorFolder`: folder containing the script 
+* `-f` or `--folder`: folder of the output
+* `-o` or `--out`: prefix of the output name to be saved in the folder defined by `-f`
+* `-p` or `--ploidy`: vector of $K$ ploidy numbers in the output in the format $p_1,p_2,p_3,...,p_K$
+* `-d` or `--depth`: vector of $J$ haploid depths, each used for a simulation $d_1,d_2,d_3,...,d_J$
+* `-n` or `--nSamples`: vector of $M$ haploid depths, each used for a simulation $n_1,n_2,n_3,...,n_M$
+* `-l` or `--loci`: number of loci used in each chromosome
+
+### Output: 
+
+In the output folder (option `-f`), one `.mpileup.gz` file for each depth $D$, number of individuals $N$, with the name
+`$OUTNAME.DP$D.NIND$N.mpileup.gz`.
+
+### Syntax Example
+
+```Shell
+$PATH/simulationScript.sh -s $PATH -f folder -o prefix -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000
+```
+
+
+
+
+
+
+
+
+
 
 #### Options
 
