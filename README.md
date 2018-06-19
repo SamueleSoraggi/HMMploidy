@@ -34,13 +34,13 @@ A `.genolikes` file for each prefix in the input file. The columns of the file r
 python Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 -0.1 -dp 5
 ```
 
-## Simulation of polyploid data mpileup files
+## Simulation of polyploid data
 
 Overview: simulate poliploidy `mpileup.gz` files
 
 `simulationScript.sh -p $PLOIDY -d $DEPTH -n $INDIVIDUALS -l $LOCI` -o $OUTNAME
 
-### Input options 
+### Options 
 
 * `-p` or `--ploidy`: vector of $K$ ploidy numbers in the output in the format $p_1,p_2,p_3,...,p_K$. No default
 * `-d` or `--depth`: vector of $J$ haploid depths, each used for a simulation $d_1,d_2,d_3,...,d_J$. No default
@@ -57,6 +57,48 @@ One `.mpileup.gz` file for each depth $D$, number of individuals $N$, with the n
 ```Shell
 $PATH/simulationScript.sh -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000 -o outFile
 ```
+
+## Inference of ploidy levels
+
+Overview: infer ploidy levels of each individual in a `.genolikes` file using sequencing depth and sequencing coverage.
+
+````Shell
+Rscript hiddenMarkovPloidyShell.R fileList=$FILELIST wind=100
+````
+
+### Options
+
+* `fileList`: list of base names of files with formats `.genolikes`, given in output by the `Geotype_Likelihoods.py` script. Alternatively, use `file` and write directly the basename of the desired base name of a file in format `.genolikes`
+* `wind`: windows size, i.e. nr of loci whose means and genotype likelihoods are summed together
+* `maxPloidy`: max number of ploidy levels (default 6) 
+* `chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
+* `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
+* `minInd`: min number of individuals with data for which a locus is usedconsider loci (default 1)
+* `eps`: sequencing/mapping error rate (default 0.005)
+
+Note: 
+
+* if working on simulations, the list of basenames is already given in output by the simulation script.
+* the `.genolikes.gz` files given in output by the `Geotype_Likelihoods.py` script must be gunzipped.
+
+### Output
+
+For each base name, there are two outputs:
+* a `.pdf` file with inferred ploidy numbers for each individual
+* a `.hiddenMarkovPloidy` file where, for each individual, results are arranged on lines as it follows:
+   * File name and individual index
+   * starting probabilities of inferred ploidies
+   * transition matrix printed on one line
+   * alpha parameters depth distributions
+   * beta parameters depth distributions
+   * final loglikelihood of the model
+   * inferred ploidy numbers
+   * posterior probabilities for the inferred states printed on one line
+   * empty line
+
+
+
+
 
 ## Application Example: Analyze ploidy numbers from simulations
 
@@ -80,18 +122,7 @@ gunzip *.genolikes.gz #the R script needs gunzipped genolikes files
 Rscript hiddenMarkovPloidyShell.R  fileList=names.poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=3
 ```
 
-For each basename, there are two outputs:
-* a `.pdf` file with inferred ploidy numbers for each individual
-* a `.hiddenMarkovPloidy` file where, for each individual, results are arranged on lines as it follows:
-   * File name and individual index
-   * starting probabilities of inferred ploidies
-   * transition matrix printed on one line
-   * alpha parameters depth distributions
-   * beta parameters depth distributions
-   * final loglikelihood of the model
-   * inferred ploidy numbers
-   * posterior probabilities for the inferred states printed on one line
-   * empty line
+
 
 
 
@@ -107,14 +138,6 @@ CHANGED BY SAMUELE UNTIL HERE - NEW SCRIPT
 
 --------------------------------------
 
-#### Options
-
-* `fileList`: list of base names for group of files with formats `.genolikes`,`.par`. Alternatively, use `file` and write directly the basename of the desired files in format `.genolikes`,`.par`
-* `maxPloidy`: max number of ploidy levels (default 6) 
-* `chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
-* `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
-* `minInd`: min number of individuals with data for which a locus is usedconsider loci (default 1)
-* `eps`: sequencing/mapping error rate (default 0.005)
 
 
    
