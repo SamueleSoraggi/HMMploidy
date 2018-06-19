@@ -38,48 +38,45 @@ python Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 
 
 Overview: simulate poliploidy `mpileup.gz` files
 
-`simulationScript.sh -s $SCRIPTFOLDER -f $FOLDER -o $OUTNAME -p $PLOIDY -d $DEPTH -n $INDIVIDUALS -l $LOCI`
+`simulationScript.sh -p $PLOIDY -d $DEPTH -n $INDIVIDUALS -l $LOCI` -o $OUTNAME
 
 ### Input options 
 
-* `-s` or `--simulatorFolder`: folder containing the script 
-* `-f` or `--folder`: folder of the output
-* `-o` or `--out`: prefix of the output name to be saved in the folder defined by `-f`
-* `-p` or `--ploidy`: vector of $K$ ploidy numbers in the output in the format $p_1,p_2,p_3,...,p_K$
-* `-d` or `--depth`: vector of $J$ haploid depths, each used for a simulation $d_1,d_2,d_3,...,d_J$
-* `-n` or `--nSamples`: vector of $M$ haploid depths, each used for a simulation $n_1,n_2,n_3,...,n_M$
-* `-l` or `--loci`: number of loci used in each chromosome
+* `-p` or `--ploidy`: vector of $K$ ploidy numbers in the output in the format $p_1,p_2,p_3,...,p_K$. No default
+* `-d` or `--depth`: vector of $J$ haploid depths, each used for a simulation $d_1,d_2,d_3,...,d_J$. No default
+* `-n` or `--nSamples`: vector of $M$ haploid depths, each used for a simulation $n_1,n_2,n_3,...,n_M$. No default
+* `-l` or `--loci`: number of loci used in each chromosome. No default
+* `-o` or `--out`: output file name (without extension). Default: out 
 
 ### Output: 
 
-In the output folder (option `-f`), one `.mpileup.gz` file for each depth $D$, number of individuals $N$, with the name
-`$OUTNAME.DP$D.NIND$N.mpileup.gz`.
+One `.mpileup.gz` file for each depth $D$, number of individuals $N$, with the name `$OUTNAME.DP$D.NIND$N.mpileup.gz`.
 
 ### Syntax Example
 
 ```Shell
-$PATH/simulationScript.sh -s $PATH -f folder -o prefix -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000
+$PATH/simulationScript.sh -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000 -o outFile
 ```
 
 ## Application Example: Analyze ploidy numbers from simulations
 
-Simulate a genome called `poliploidyGenome` with sequence of ploidy numbers 2-5-4-2 for two different haploid depths, 3X and 8X, and two different amount of individuals, 5 and 10. Consider `1000` simulated loci for each ploidy level. Let `PATH` be the folder containing the scripts of this repository, and `FOLDER` the folder containing the output.
+Simulate a genome called `poliploidyGenome` with sequence of ploidy numbers 2-5-4-2 for two different haploid depths, 3X and 8X, and two different amount of individuals, 5 and 10. Consider `1000` simulated loci for each ploidy level. Let `PATH` be the folder containing the scripts of this repository.
 
 Simulate the dataset
 ```Shell
-$PATH/simulationScript.sh -s $PATH -f $FOLDER -o poliploidyGenome -p 2,4,5,2 -d 3,8 -n 5,10 -l 1000
+$PATH/simulationScript.sh -p 2,4,5,2 -d 3,8 -n 5,10 -l 1000 -o poliploidyGenome
 ```
 
-In `$FOLDER`, for each base name of a simulated dataset, there are four simulated `.mpileup.gz` files: `poliploidyGenome.DP3.NIND10.genolikes, poliploidyGenome.DP8.NIND10.genolikes, poliploidyGenome.DP3.NIND5.genolikes, poliploidyGenome.DP8.NIND5.genolikes`, and a file containing the list of prefixes for calculating the genotype likelihoods: `names.poliploidyGenome.filelist`
+For each base name of a simulated dataset, there are four simulated `.mpileup.gz` files: `poliploidyGenome.DP3.NIND10.genolikes, poliploidyGenome.DP8.NIND10.genolikes, poliploidyGenome.DP3.NIND5.genolikes, poliploidyGenome.DP8.NIND5.genolikes`, and a file containing the list of prefixes for calculating the genotype likelihoods: `names.poliploidyGenome.filelist`
 
 Calculate genotype likelihoods without applying any filter (see the script options for filtering details):
 ```Shell
-$PATH/python3 Genotype_Likelihoods.py test.mpileup.gz
+python3 $PATH/Genotype_Likelihoods.py test.mpileup.gz
 ```
 
 Run the analysis of ploidy numbers for the four simulated datasets. Use window size 100, analyze all the individuals, consider the max amount of ploidys being 5, do not trim the data, and use loci where there is data for >=3 individuals
 ```Shell
-gunzip $FOLDER/*.genolikes.gz #the R script needs gunzipped genolikes files
+gunzip *.genolikes.gz #the R script needs gunzipped genolikes files
 Rscript hiddenMarkovPloidyShell.R  fileList=names.poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=3
 ```
 
