@@ -15,18 +15,18 @@ Overview: calculate genotype likelihoods
 
 * `Input`: name of a text file containing the suffix of each `.mpileup.gz` file
 
-Additionally the following options are available:
+### Options
 
-* `--Inbreeding [-i]`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
-* `--downsampling [-d]`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in [0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
-* `--min_non_major_freq [-m]`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
-* `--max_minor2_freq [-M2]`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
-* `--max_minor3_freq [-M3]`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
-* `--min_global_depth [-dp]`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
+* `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
+* `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in [0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
+* `-m` or `--min_non_major_freq`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
+* `-M2` or `--max_minor2_freq`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `-M3` or `--max_minor3_freq`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
 
 ### Output
 
-A `.genolikes` file for each prefix in the input file. The columns of the file represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
+A `.genolikes.gz` file for each prefix in the input file. The columns of the file represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
 
 ### Syntax Example
 
@@ -38,7 +38,7 @@ python Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 
 
 Overview: simulate poliploidy `mpileup.gz` files
 
-`simulationScript.sh -p $PLOIDY -d $DEPTH -n $INDIVIDUALS -l $LOCI` -o $OUTNAME
+`simulationScript.sh -p $PLOIDY -d $DEPTH -n $INDIVIDUALS -l $LOCI -o $OUTNAME`
 
 ### Options 
 
@@ -48,7 +48,7 @@ Overview: simulate poliploidy `mpileup.gz` files
 * `-l` or `--loci`: number of loci used in each chromosome. No default
 * `-o` or `--out`: output file name (without extension). Default: out 
 
-### Output: 
+### Output
 
 One `.mpileup.gz` file for each depth $D$, number of individuals $N$, with the name `$OUTNAME.DP$D.NIND$N.mpileup.gz`.
 
@@ -60,15 +60,19 @@ $PATH/simulationScript.sh -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000 -o outFile
 
 ## Inference of ploidy levels
 
-Overview: infer ploidy levels of each individual in a `.genolikes` file using sequencing depth and sequencing coverage.
+Overview: infer ploidy levels of each individual in a `.genolikes` file (in output by the `Genotype_Likelihoods.py`) using sequencing depth and sequencing coverage.
 
 ````Shell
 Rscript hiddenMarkovPloidyShell.R fileList=$FILELIST wind=100
 ````
 
+### Input
+
+text file containing the names of `.genolikes` files to analyze
+
 ### Options
 
-* `fileList`: list of base names of files with formats `.genolikes`, given in output by the `Geotype_Likelihoods.py` script. Alternatively, use `file` and write directly the basename of the desired base name of a file in format `.genolikes`
+* `fileList`: list of base names of files with formats `.genolikes`, given in output by the `Genotype_Likelihoods.py` script. Alternatively, use `file` and write directly the basename of the desired base name of a file in format `.genolikes`
 * `wind`: windows size, i.e. nr of loci whose means and genotype likelihoods are summed together
 * `maxPloidy`: max number of ploidy levels (default 6) 
 * `chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
@@ -95,10 +99,6 @@ For each base name, there are two outputs:
    * inferred ploidy numbers
    * posterior probabilities for the inferred states printed on one line
    * empty line
-
-
-
-
 
 ## Application Example: Analyze ploidy numbers from simulations
 
