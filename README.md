@@ -1,85 +1,93 @@
 # Hidden Markov Ploidy
 Tools for inferring ploidy levels, testing for aneuploidy and other stuff.
-Calculating its allele frequencies and genotype likelihoods requires to download the following tool
-* [ANGSD](https://github.com/ANGSD/angsd). Once ANGSD is downloaded, substitute the file `abcFreq.cpp` with the one in this github repository, and thereafter compile ANGSD. This allows to model allele frequencies for poliploidy genomes and not only for the diploid case.
-* [NGSPOLY](https://github.com/ImperialCollegeLondon/ngsJulia/tree/master/ngsPoly)
-* [JULIA vers >= 0.4.7](https://julialang.org/downloads/), with `GZip` and `ArgParse` packages
+Calculating its allele frequencies and genotype likelihoods requires to download the followings:
 
-## Poliploid data simulations
-`simulationScript.sh`: simulate poliploidy data: set the ploidy numbers, haploid depths and number of individuals editing the options in the file (ps: I will make this as a proper script with inputs from command line).
+* python 3, with packages ``
+* R, with packages `pracma, data.table, Rcpp`
 
-#### Input options 
+## Generating genotype likelihoods
 
-* `ploidy`: vector with the desired sequence of ploidy numbers  
-* `depth`: vector with the desired haploid depths
-* `sites`: number of sites for each ploidy number
-* `samples`: number of individuals to simulate
-* `BASENAME`: base name for the output files 
-* `FOLDER`: folder where to save the outputs
-* In the ANGSD command called in the script, see the explanation for the `minInd` and `minIndDepth` filtering options.
+Overview: calculate genotype likelihoods
 
-#### Output: 
+`Genotype_Likelihoods.py names.filelist`
 
-In the folder `$FOLDER`, there are four groups of data used in ploidy inference, one for each combination of depth and number of individuals (4 combinations in this example) in the following formats and with same basename:
-* `.genolikes` where the columns represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 6 (7 columns)
-* `.mpileup` mpileup file of the simulated genome
-* `.par` initial estimate for ploidy levels parameters. Each two lines represent the alpha and beta parameters of negative binomial distributions modelled on observed depths of one individual.
+### Input
 
-## Inference of ploidy numbers from data
+* `Input`: name of a text file containing the suffix of each `.mpileup.gz` file
 
-Inference of ploidy numbers is performed through the R script `hiddenMarkovPloidyShell.R
+### Options
+
+* `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
+* `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in [0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
+* `-m` or `--min_non_major_freq`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
+* `-M2` or `--max_minor2_freq`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `-M3` or `--max_minor3_freq`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
+
+### Output
+
+A `.genolikes.gz` file for each prefix in the input file. The columns of the file represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
+
+### Syntax Example
 
 ```Shell
-   Rscript hiddenMarkovPloidyShell.R  fileList=$LIST  maxPloidy=$MAXP\
-           wind=$WS  chosenInd=$IND  quantileTrim=$Q   minInd=$M eps=$E
+python Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 -0.1 -dp 5
 ```
 
-#### Options
+## Simulation of polyploid data
 
-* `fileList`: list of base names for group of files with formats `.genolikes`,`.par`. Alternatively, use `file` and write directly the basename of the desired files in format `.genolikes`,`.par`
+Overview: simulate poliploidy `mpileup.gz` files
+
+`simulationScript.sh -p $PLOIDY -d $DEPTH -n $INDIVIDUALS -l $LOCI -o $OUTNAME`
+
+### Options 
+
+* `-p` or `--ploidy`: vector of $K$ ploidy numbers in the output in the format $p_1,p_2,p_3,...,p_K$. No default
+* `-d` or `--depth`: vector of $J$ haploid depths, each used for a simulation $d_1,d_2,d_3,...,d_J$. No default
+* `-n` or `--nSamples`: vector of $M$ haploid depths, each used for a simulation $n_1,n_2,n_3,...,n_M$. No default
+* `-l` or `--loci`: number of loci used in each chromosome. No default
+* `-o` or `--out`: output file name (without extension). Default: out 
+
+### Output
+
+One `.mpileup.gz` file for each depth $D$, number of individuals $N$, with the name `$OUTNAME.DP$D.NIND$N.mpileup.gz`.
+
+### Syntax Example
+
+```Shell
+$PATH/simulationScript.sh -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000 -o outFile
+```
+
+## Inference of ploidy levels
+
+Overview: infer ploidy levels of each individual in a `.genolikes` file (in output by the `Genotype_Likelihoods.py`) using sequencing depth and sequencing coverage.
+
+````Shell
+Rscript hiddenMarkovPloidyShell.R fileList=$FILELIST wind=100
+````
+
+### Input
+
+text file containing the names of `.genolikes` files to analyze
+
+### Options
+
+* `fileList`: list of base names of files with formats `.genolikes`, given in output by the `Genotype_Likelihoods.py` script. Alternatively, use `file` and write directly the basename of the desired base name of a file in format `.genolikes`
+* `wind`: windows size, i.e. nr of loci whose means and genotype likelihoods are summed together
 * `maxPloidy`: max number of ploidy levels (default 6) 
 * `chosenInd`: comma separated indices of individuals to analyze (default NA = analyzes all individuals)
 * `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default 0,1 = keep all data)
 * `minInd`: min number of individuals with data for which a locus is usedconsider loci (default 1)
 * `eps`: sequencing/mapping error rate (default 0.005)
 
-### Example: Analyze ploidy numbers from simulations
+Note: 
 
-Simulate a genome called `poliploidyGenome` with sequence of ploidy numbers 2-5-4-2 for two different haploid depths, 3X and 8X, and two different amount of individuals, 5 and 10. Consider `1000` simulated loci for each ploidy level. 
-Inside the script, edit the options as it follows
-* `ploidy=(2 5 4 2)` 
-* `depth=(3 8)`
-* `sites=1000`
-* `samples=(5 10)`
-* `BASENAME=poliploidyGenome`
-* `FOLDER=ploidySim`
+* if working on simulations, the list of basenames is already given in output by the simulation script.
+* the `.genolikes.gz` files given in output by the `Geotype_Likelihoods.py` script must be gunzipped.
 
-Run the script:
-```Shell
-bash simulationScript.sh
-```
+### Output
 
-In `$FOLDER`, for each base name of a simulated dataset, there are files used for our analysis. For example, for `poliploidyGenome.DP3.NIND10`, one can find
-* `poliploidyGenome.DP3.NIND10.genolikes`
-* `poliploidyGenome.DP3.NIND10.mpileup`
-* `poliploidyGenome.DP3.NIND10.par`
-
-Create a file `basenames.filelist` with the list of basenames for the simulated genomes. 
-Continuing the example from simulated data, the file would for example contain the following basenames:
-```
-ploidySim/poliploidyGenome.DP3.NIND10
-ploidySim/poliploidyGenome.DP3.NIND5
-ploidySim/poliploidyGenome.DP8.NIND10
-ploidySim/poliploidyGenome.DP8.NIND5
-```
-
-Run the analysis of ploidy numbers for the four simulated datasets. Use window size 100, analyze all the individuals, consider the max amount of ploidys being 5, do not trim the data, and use loci where there is data for >=3 individuals
-
-```Shell
-Rscript hiddenMarkovPloidyShell.R  fileList=basenames.filelist  maxPloidy=5  wind=100  minInd=3
-```
-
-For each basename, there are two outputs:
+For each base name, there are two outputs:
 * a `.pdf` file with inferred ploidy numbers for each individual
 * a `.hiddenMarkovPloidy` file where, for each individual, results are arranged on lines as it follows:
    * File name and individual index
@@ -91,6 +99,47 @@ For each basename, there are two outputs:
    * inferred ploidy numbers
    * posterior probabilities for the inferred states printed on one line
    * empty line
+
+## Application Example: Analyze ploidy numbers from simulations
+
+Simulate a genome called `poliploidyGenome` with sequence of ploidy numbers 2-5-4-2 for two different haploid depths, 3X and 8X, and two different amount of individuals, 5 and 10. Consider `1000` simulated loci for each ploidy level. Let `PATH` be the folder containing the scripts of this repository.
+
+Simulate the dataset
+```Shell
+$PATH/simulationScript.sh -p 2,4,5,2 -d 3,8 -n 5,10 -l 1000 -o poliploidyGenome
+```
+
+For each base name of a simulated dataset, there are four simulated `.mpileup.gz` files: `poliploidyGenome.DP3.NIND10.genolikes, poliploidyGenome.DP8.NIND10.genolikes, poliploidyGenome.DP3.NIND5.genolikes, poliploidyGenome.DP8.NIND5.genolikes`, and a file containing the list of prefixes for calculating the genotype likelihoods: `names.poliploidyGenome.filelist`
+
+Calculate genotype likelihoods without applying any filter (see the script options for filtering details):
+```Shell
+python3 $PATH/Genotype_Likelihoods.py test.mpileup.gz
+```
+
+Run the analysis of ploidy numbers for the four simulated datasets. Use window size 100, analyze all the individuals, consider the max amount of ploidys being 5, do not trim the data, and use loci where there is data for >=3 individuals
+```Shell
+gunzip *.genolikes.gz #the R script needs gunzipped genolikes files
+Rscript hiddenMarkovPloidyShell.R  fileList=names.poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=3
+```
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------
+
+CHANGED BY SAMUELE UNTIL HERE - NEW SCRIPT
+
+--------------------------------------
+
+
+
    
 ## Inferring alpha and beta values from .genolikes files 
  
