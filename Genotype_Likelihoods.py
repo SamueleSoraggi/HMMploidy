@@ -61,14 +61,15 @@ for g1 in list_of_inputs: #output files names
         if outFolder==0:
             output = "./"+g1+".genolikes.gz"
         else:
-            output = outfolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
+            output = outFolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
     else:
         g=g1+".mpileup.gz"
         if outFolder==0:
             output = g1+".genolikes.gz"
         else:
-            output = outfolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
-   
+            output = outFolder+"/"+g1.split('/')[-1]+".genolikes.gz"
+
+    print(output)        
     with gzip.open(g) as f:
         first_line = f.readline()
         Data=first_line.decode().strip('\n')# Convert bytes into string
@@ -100,7 +101,7 @@ for g1 in list_of_inputs: #output files names
     base_number=0 # count for bases
     list_of_window=[] 
     list_of_window2=[]
-    gzip.open('.'+directory+'/'+output,'wt') 
+    gzip.open(output,'wt') 
 
     no_bases=0
     total_bases=0
@@ -291,7 +292,7 @@ for g1 in list_of_inputs: #output files names
                             content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,haploid)),"\t".join(map(str,diploid)),"\t".join(map(str,triploid)),"\t".join(map(str,tetraploid)),"\t".join(map(str,pentaploid)),"\t".join(map(str,hexaploid)),"\t".join(map(str,heptaploid)),"\t".join(map(str,octaploid)))
                             content=sep.join(content)
                             content=content+"\n"
-                            with gzip.open(outFolder+'/'+output,'at+') as f: 
+                            with gzip.open(output,'at+') as f: 
                                 f.write(content)
                             content=""
 
