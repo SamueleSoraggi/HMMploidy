@@ -29,6 +29,7 @@ ploidy = [1,2,3,4,5,6,7,8]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files for use in analysis to be used")
+parser.add_argument("-o","--outFolder",help="output folder",default=0)
 parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--downsampling",help="Fraction of data to be used in the calculations",default=1)
 parser.add_argument("-m","--min_non_major_freq",type=float,help="Set the minimum frequency of non major alleles for bases to be included in the calculations",default=0.2)
@@ -52,14 +53,22 @@ Nfiles=len(list_of_inputs)
 print('%d files found' %Nfiles)
 print(list_of_inputs)
 
-for g in list_of_inputs: #output files names
-    output = g+".genolikes.gz" # output file to contain genotype likelihoods
-    directory = '/'.join(g.split('/')[:-1])
+outFolder = args.outFolder
+for g1 in list_of_inputs: #output files names
+    directory = '/'.join(g1.split('/')[:-1])
     if len(directory) == 0:
-        g="./"+line+".mpileup.gz"
+        g="./"+g1+".mpileup.gz"
+        if outFolder==0:
+            output = "./"+g1+".genolikes.gz"
+        else
+            output = outfolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
     else:
-        g=line+".mpileup.gz"
-
+        g=g1+".mpileup.gz"
+        if outFolder==0:
+            output = g1+".genolikes.gz"
+        else
+            output = outfolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
+   
     with gzip.open(g) as f:
         first_line = f.readline()
         Data=first_line.decode().strip('\n')# Convert bytes into string
@@ -282,7 +291,7 @@ for g in list_of_inputs: #output files names
                             content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,haploid)),"\t".join(map(str,diploid)),"\t".join(map(str,triploid)),"\t".join(map(str,tetraploid)),"\t".join(map(str,pentaploid)),"\t".join(map(str,hexaploid)),"\t".join(map(str,heptaploid)),"\t".join(map(str,octaploid)))
                             content=sep.join(content)
                             content=content+"\n"
-                            with gzip.open('.'+directory+'/'+output,'at+') as f: 
+                            with gzip.open(outFolder+'/'+output,'at+') as f: 
                                 f.write(content)
                             content=""
 
