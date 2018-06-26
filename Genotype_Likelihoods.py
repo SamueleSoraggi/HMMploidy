@@ -60,13 +60,13 @@ for g1 in list_of_inputs: #output files names
         g="./"+g1+".mpileup.gz"
         if outFolder==0:
             output = "./"+g1+".genolikes.gz"
-        else
+        else:
             output = outfolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
     else:
         g=g1+".mpileup.gz"
         if outFolder==0:
             output = g1+".genolikes.gz"
-        else
+        else:
             output = outfolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
    
     with gzip.open(g) as f:
