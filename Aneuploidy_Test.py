@@ -4,6 +4,8 @@ import sys
 import numpy as np
 import argparse
 import random
+import pickle
+from pathlib import Path
 
 
 parser = argparse.ArgumentParser()
@@ -12,6 +14,13 @@ args = parser.parse_args()
 
 ploidy=[1,2,3,4,5,6,7,8]
 alleles = ['A','C','G','T']
+
+
+classifier = pickle.load(open('Aneuploidy_Classifier.sav', 'rb'))
+polynomial_regressor = pickle.load(open('Polynomial_Regressor.pk1','rb'))
+
+
+
 input = args.input #Input file in form of gziped mpileup
 list_of_inputs=[]
 with open(input,'rb') as f:# opens the mpilup. Use mpileup.read() to display content
@@ -157,13 +166,12 @@ for g in list_of_inputs:
 
 
 
-    #Test for aneuploidy     
-    import Delta_anal_poly as DAN
+#TEST FOR ANEUPLOIDY
     #import Delta_anal_ANN as DAN # for ANN classifier
     def aneuploidy_in_sample(x):
-        x=DAN.polynomial_regressor.transform(x)
-        isit=DAN.classifier.predict(x)
-        prob=DAN.classifier.predict_proba(x)
+        x=polynomial_regressor.transform(x)
+        isit=classifier.predict(x)
+        prob=classifier.predict_proba(x)
         return(prob)
 
     prob_of_aneu=0
