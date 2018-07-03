@@ -71,7 +71,7 @@ for g in list_of_inputs:
     base_number=0
     total_bases=0
     no_bases=0
-    with gzip.open(output) as genos:
+    with gzip.open(directory+'/'+output) as genos:
         for line in genos:
             Data=line.decode().strip('\n')# Convert bytes into string
             l = Data.split('\t')
@@ -84,35 +84,35 @@ for g in list_of_inputs:
 
             p=[]
             if 1 in ploidy:
-                haploid = l[7:9]
+                haploid = l[9:11]
                 haploid_sum = sum(map(lambda x:float(x),haploid))
                 p.append(haploid_sum)
             if 2 in ploidy:
-                diploid = l[9:12]
+                diploid = l[11:14]
                 diploid_sum = sum(map(lambda x:float(x),diploid))
                 p.append(diploid_sum)
             if 3 in ploidy:
-                triploid = l[12:16]
+                triploid = l[14:18]
                 triploid_sum = sum(map(lambda x:float(x),triploid))
                 p.append(triploid_sum)
             if 4 in ploidy:
-                tetraploid = l[16:21]
+                tetraploid = l[18:23]
                 tetraploid_sum = sum(map(lambda x:float(x),tetraploid))
                 p.append(tetraploid_sum)
             if 5 in ploidy:
-                pentaploid = l[21:27]
+                pentaploid = l[23:29]
                 pentaploid_sum = sum(map(lambda x:float(x),pentaploid))
                 p.append(pentaploid_sum)
             if 6 in ploidy:
-                hexaploid = l[27:34]
+                hexaploid = l[29:36]
                 hexaploid_sum = sum(map(lambda x:float(x),hexaploid))
                 p.append(hexaploid_sum)
             if 7 in ploidy:
-                heptaploid = l[34:42]
+                heptaploid = l[36:44]
                 heptaploid_sum = sum(map(lambda x:float(x),heptaploid))
                 p.append(heptaploid_sum)
             if 8 in ploidy:
-                octaploid = l[42:51]
+                octaploid = l[44:53]
                 octaploid_sum = sum(map(lambda x:float(x),octaploid))
                 p.append(octaploid_sum)
             Overall_Prob_HWE[0]+=p # Add probabilities to overall counter
