@@ -46,7 +46,7 @@ print.args<-function(args,des){
 ## NULL is an non-optional argument, NA is an optional argument with no default, others are the default arguments
 args<-list(file = NA, #single basename of file to analize (does not need the list 'filelist' for multiple files)
            fileList = NA, #list of basenames for GUNZIPPED .genolike, .mafs and .par files
-           wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
+           wind = 100, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
            #so I have not implemented a list of chromosomes/loci intervals to read. it might come if we decide it is smart.
            maxPloidy = 6, #maximum ploidy. Must change with choice of potential ploidies (e.g. haploid might be excluded a priori by users)
            minInd = 1, #min ind having reads #also in ANGSD, better to have it here as well
@@ -56,7 +56,7 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
            alpha = NA, #alpha parameters comma separated
            beta = NA, #beta parameters comma separated
            quantileTrim ="0,1", #quantiles for trimming
-           eps = .05 #effect of sequencing and mapping error
+           eps = .0005 #effect of sequencing and mapping error
            )
 
 #if no argument aree given prints the need arguments and the optional ones with default
@@ -492,59 +492,6 @@ MStep <- function(E,count,TRANS,alpha,beta){
     return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta,remStates=remStates))
 }
 
-##Mstep for one-state conditional EM optimization
-MStepSingle <- function(count,alpha,beta,geno){
-
-    N <- 1
-    Total <- dim(count)[1]
-    bckwrd <- rep(1,Total)
-    forwrd <- rep(1,Total)
-    ni <- rep(1,Total)
-
-    dens <- matrix(0, Total, N)
-    scale <- rbind(1, matrix(0, nrow=Total-1))
-    
-    cm <- max(count)
-    if(cm > 50000){
-        dnorm <- as.matrix(lgamma(count + 1))
-    } else {
-        tmp <- cumsum(rbind(0, log(as.matrix(1:max(count)))))
-        dnorm <- as.matrix(tmp[count+1])
-    }
-
-    
-    densLog <-  matrix(1, nrow=Total) %*% (alpha * log(beta/(1+beta)) - lgamma(alpha)) - count %*% log(1+beta) + lgamma(count + alpha) - dnorm  + geno
-
-    dens <- exp( densLog )
-
-    dens <- apply(dens, 2, function(x) {x[x==0 | is.na(x) | is.nan(x)] <- .Machine$double.xmin; x})        	
-
-    delta <- 1
-    TRANS <- 1
-    								
-    eq_count <- sum(ni)
-    beta <- alpha / ( sum(count) / eq_count)
-		
-    grad <- eq_count * (log(beta / (1+beta)) - digamma(alpha)) + apply(ni * digamma(count %*% matrix(1,ncol=N) + matrix(1,nrow=Total) %*% alpha), 2, sum)
-				
-    hess <- -eq_count * trigamma(alpha) + apply(ni * trigamma(count %*% matrix(1,ncol=N) + matrix(1, nrow=Total) %*% alpha), 2, sum)
-
-    tmp_step <- - grad / hess
-    tmp <- alpha + tmp_step
-
-    if(any(is.na(tmp)))
-        return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta))
-    
-    while (any(tmp <= 0)){
-        warning(sprintf("Alpha (%.4f)<0 ! Try smaller (10%s) Newton step ...\n", tmp_step,"%"))
-        tmp_step <- tmp_step/10
-        tmp <- alpha + tmp_step
-    }
-		
-    alpha <- tmp
-    return(list(delta=1,TRANS=1,alpha=alpha,beta=beta,llk=sum(densLog)))
-}
-
 
 ##EM algorithm for HMM optimization
 nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=maxPloidy, NBH_NIT_MAX=10000, NBH_TOL=1e-5, MAXALPHA=1e7, MAXBETA=1e7){
@@ -576,15 +523,18 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
 
         ##check after some steps for some convergence and try to remove 1 state
         if(rate<=.0001 && bicIter>=30 && checkBIC){
-            if(dim(alpha)[2]==2){ #if removing one state leaves only one ploidy
+            print(alpha)
+            if(length(alpha)==2){ #if removing one state leaves only one ploidy
+                alpha=matrix(alpha,ncol=length(alpha))
+                beta=matrix(beta,ncol=length(beta))
                 cat("\t==>reduction to 1 state start\n")
                 compLL <- c()
                 for(kk in 1:length(stateVec)){#try out one state at a time
                     diff <- +Inf
                     contDiff <- 0
                     gg <- geno[,kk]
-                    aa <- alpha[,kk]
-                    bb <- beta[,kk]
+                    aa <- alpha[,kk]; aa <- matrix(aa,ncol=length(aa))
+                    bb <- beta[,kk]; bb <- matrix(bb,ncol=length(bb))
                     nanFlag <- FALSE
                     
                     while(diff >= 0.001 & contDiff < 150){
@@ -675,7 +625,8 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                 break
         }
 
-            
+            alpha <- matrix(alpha,ncol=length(alpha))
+            beta <- matrix(beta,ncol=length(beta))
             K <- dim(alpha)[2]
             
             ##if removing one state leaves at least other two, then what follows will happen
@@ -690,7 +641,8 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
             compLL <- c()
             Lcomb = length(combIdx)
             TRANS2 <- TRANS; delta2 <- delta; alpha2 <- alpha; beta2 <- beta; geno2 <- geno;
-
+            print(alpha2)
+            print(beta2)
             ##try each combination of states and genotype likelihoods on ploidies
             for( kk1 in combIdx ){
                 for( kk2 in combIdx ){
@@ -814,6 +766,8 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
             }
             cat("States Relation : ", stateVec,"\n")
             #cat("\t==>alpha: ", alpha, "\n\t\tbeta: ", beta, "\n\t\tmu: ", alpha/beta, "\n")
+            #alpha <- matrix(alpha,ncol=length(alpha))
+           
         }
 
         N <- nrow(TRANS)        
@@ -826,7 +780,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
             logl[nit] <- 0; TRANS=TRANS0; alpha=alpha0; beta=beta0;  logl=logl0; bckwrd=postprob0; dens=dens0
             break
         }
-	
+  
         M <- MStep(E,count,TRANS,alpha,beta)
         TRANS <- M$TRANS
         alpha <- M$alpha
@@ -876,6 +830,62 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                                         
     list(count=count, delta=delta, TRANS=TRANS, alpha=alpha, beta=beta, logl=logl, postprob=bckwrd, dens=dens, mu = alpha/beta, sigma=alpha/beta+alpha/beta^2, states=stateVec)				
 }
+
+
+
+
+
+MStepSingle <- function(count,alpha,beta,geno){
+
+    N <- 1
+    Total <- dim(count)[1]
+    bckwrd <- rep(1,Total)
+    forwrd <- rep(1,Total)
+    ni <- rep(1,Total)
+
+    dens <- matrix(0, Total, N)
+    scale <- rbind(1, matrix(0, nrow=Total-1))
+    
+    cm <- max(count)
+    if(cm > 50000){
+        dnorm <- as.matrix(lgamma(count + 1))
+    } else {
+        tmp <- cumsum(rbind(0, log(as.matrix(1:max(count)))))
+        dnorm <- as.matrix(tmp[count+1])
+    }
+
+    densLog <-  matrix(1, nrow=Total) %*% (alpha * log(beta/(1+beta)) - lgamma(alpha)) - count %*% log(1+beta) + lgamma(count + matrix(1,nrow=Total) %*% alpha) - dnorm  + geno
+
+    dens <- exp( densLog )
+
+    dens <- apply(dens, 2, function(x) {x[x==0 | is.na(x) | is.nan(x)] <- .Machine$double.xmin; x})        	
+
+    delta <- 1
+    TRANS <- 1
+    								
+    eq_count <- sum(ni)
+    beta <- alpha / ( sum(count) / eq_count)
+		
+    grad <- eq_count * (log(beta / (1+beta)) - digamma(alpha)) + apply(ni * digamma(count %*% matrix(1,ncol=N) + matrix(1,nrow=Total) %*% alpha), 2, sum)
+				
+    hess <- -eq_count * trigamma(alpha) + apply(ni * trigamma(count %*% matrix(1,ncol=N) + matrix(1, nrow=Total) %*% alpha), 2, sum)
+
+    tmp_step <- - grad / hess
+    tmp <- alpha + tmp_step
+
+    if(any(is.na(tmp)))
+        return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta))
+    
+    while (any(tmp <= 0)){
+        warning(sprintf("Alpha (%.4f)<0 ! Try smaller (10%s) Newton step ...\n", tmp_step,"%"))
+        tmp_step <- tmp_step/10
+        tmp <- alpha + tmp_step
+    }
+		
+    alpha <- tmp
+    return(list(delta=1,TRANS=1,alpha=alpha,beta=beta,llk=sum(densLog)))
+}
+
 
 
 ##logarithmic normalization of a vector
@@ -951,6 +961,30 @@ pGenoData <- function(f,gl,nInd=1,h=0){
 }
 
 
+pGenoDataSingle <- function(f,gl,h=0){   
+    y = ncol(gl)-1
+    Lf = dim(gl)[1]
+    fVector=rep(f,Lf)
+    nInd = 1
+    
+    matrix( rep(  dbinom(0:y,y,fVector,log=TRUE), nInd ), nrow=nInd, byrow=T )
+
+    X <- c()
+    for(l in 1:Lf){
+
+        freq <- f[l]
+        idx <- ((l-1)*nInd+1):(l*nInd)
+        p <- dbinom(0:y,y,freq,log=TRUE)
+        p[is.infinite(p)]=-1000
+        glSum <- gl[idx,] + matrix( rep(  dbinom(0:y,y,freq,log=TRUE), nInd ), nrow=nInd, byrow=T )
+        X[l] <- sum( rowSumsLog( glSum ) ) 
+        
+    }
+    #find sites hvor f passer bedst - ordering?
+    return( X )    
+}
+
+
 ##read genotype likelihood at a certain site, for a certain dataset GL,
 ##given ploidy and number of individuals
 readGL <- function(site,ploidy,nInd=1,GL){
@@ -1014,7 +1048,6 @@ for(i in 1:length(fileVector)){
 
 
     #calculate allele frequencies
-    eps = .05
     majorReads <- GL[,8]
     minorReads <- GL[,9]
     freqs <- alleleFrequencies(majorReads,minorReads,nInd,minInd,eps)
@@ -1093,7 +1126,7 @@ for(i in 1:length(fileVector)){
         count <- matrix(DPmean,ncol=1)
         if(directInputPar==FALSE){
             cat(sprintf("    Estimate parameters for %d states\n", maxPloidy))
-            alpha <- tail(quantile(count[count[,1]>0,1], probs=seq(0, 1, 1/maxPloidy)), maxPloidy)
+            alpha <- tail(quantile(count[count[,1]>0,1], probs=seq(0, 1, 1/maxPloidy), na.rm=TRUE), maxPloidy)
             beta <- rep(1, maxPloidy)	
             delta <- rep(0.5, maxPloidy)
             nbm <- nbm_em(count, alpha, beta, delta)	
@@ -1102,8 +1135,8 @@ for(i in 1:length(fileVector)){
             Pi0 <- matrix(rep(nbm$wght, maxPloidy), ncol=maxPloidy, byrow=TRUE)
 	    # Order the parameters s.t. they are in increasing order of mean values
             myorder <- order(alpha/beta)	
-            alpha <- alpha[myorder]
-            beta <- beta[myorder]
+            alpha <- matrix(alpha[myorder],ncol=length(myorder))
+            beta <- matrix(beta[myorder],ncol=length(myorder))
             Pi0 <- Pi0[myorder, myorder]		
         }
         
