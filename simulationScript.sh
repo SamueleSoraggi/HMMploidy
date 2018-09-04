@@ -34,7 +34,8 @@ do
 	    shift # past value
 	    ;;
 	-l|--loci)
-	    sites="$2"
+	    sites1="$2"
+	    IFS=',' read -ra sites <<< "$sites1"
 	    shift # past argument
 	    shift # past value
 	    ;;
@@ -89,6 +90,7 @@ for SAM in ${samples[@]}
 do
     for DP in ${depth[@]}
     do
+	SITESCOUNTER=0
 	NAME=$BASENAME.DP${DP}.NIND${SAM} #basename for the file
 	echo "GENERATING FILE: " "\"" $NAME "\""
 	offset=1 #loci counter
@@ -100,18 +102,19 @@ do
 
 	    A=`Rscript -e "cat($DP*$PL)"` #ploidy level depth
 	    #echo $A
-	    Rscript ${SCRIPTFOLDER}/simulMpileup.R --out test.DP${DP}.NIND${SAM}.txt --copy ${PL}x${SAM} --sites $sites --depth $A --qual 20 --ksfs 1 --ne 10000 --offset $offset | gzip -c -f > $NAME.BUFFER.mpileup.gz
+	    Rscript ${SCRIPTFOLDER}/simulMpileup.R --out test.DP${DP}.NIND${SAM}.txt --copy ${PL}x${SAM} --sites ${sites[$SITESCOUNTER]} --depth $A --qual 20 --ksfs 1 --ne 10000 --offset $offset | gzip -c -f > $NAME.BUFFER.mpileup.gz
 
-	    printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + $sites - 1))"
+	    printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))"
 
-	    #printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + $sites - 1))" >> $NAME.fai
+	    #printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))" >> $NAME.fai
 
 	    #keep track of number of loci
-	    offset=$(($offset + $sites))
+	    offset=$(($offset+${sites[$SITESCOUNTER]}))
 
 	    #concatenate ploidy levels in a buffer file
 	    zcat $NAME.BUFFER.mpileup.gz >> $NAME.BUFFER.txt
-	    
+
+	    SITESCOUNTER=$(($SITESCOUNTER + 1))
 	done
 
 	#handle some stuff
