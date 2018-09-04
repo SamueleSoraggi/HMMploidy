@@ -46,12 +46,11 @@ print.args<-function(args,des){
 ## NULL is an non-optional argument, NA is an optional argument with no default, others are the default arguments
 args<-list(file = NA, #single basename of file to analize (does not need the list 'filelist' for multiple files)
            fileList = NA, #list of basenames for GUNZIPPED .genolike, .mafs and .par files
-           wind = 100, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
-           #so I have not implemented a list of chromosomes/loci intervals to read. it might come if we decide it is smart.
+           wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
            maxPloidy = 6, #maximum ploidy. Must change with choice of potential ploidies (e.g. haploid might be excluded a priori by users)
-           minInd = 1, #min ind having reads #also in ANGSD, better to have it here as well
+           minInd = 1, #min ind having reads 
            chosenInd = NA, #which Individual to consider (one at the time for now)
-           #Must implement option for: all ind together or one at the time.
+           #Must implement option for: all ind together or one at the time ?
            #isSims = FALSE, #data is simulated. if TRUE fileList will also refer to file(s) with true ploidies
            alpha = NA, #alpha parameters comma separated
            beta = NA, #beta parameters comma separated
@@ -523,7 +522,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
 
         ##check after some steps for some convergence and try to remove 1 state
         if(rate<=.0001 && bicIter>=30 && checkBIC){
-            print(alpha)
+            #print(alpha)
             if(length(alpha)==2){ #if removing one state leaves only one ploidy
                 alpha=matrix(alpha,ncol=length(alpha))
                 beta=matrix(beta,ncol=length(beta))
@@ -641,8 +640,8 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
             compLL <- c()
             Lcomb = length(combIdx)
             TRANS2 <- TRANS; delta2 <- delta; alpha2 <- alpha; beta2 <- beta; geno2 <- geno;
-            print(alpha2)
-            print(beta2)
+            #print(alpha2)
+            #print(beta2)
             ##try each combination of states and genotype likelihoods on ploidies
             for( kk1 in combIdx ){
                 for( kk2 in combIdx ){
@@ -832,9 +831,6 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
 }
 
 
-
-
-
 MStepSingle <- function(count,alpha,beta,geno){
 
     N <- 1
@@ -910,19 +906,27 @@ logRescale <- function(v){
 
 ##sum of values in a windows. When lociSNP=loci all values in the windows are used.
 ##avg=TRUE performs average instead of sum. ws=window size and dp=vector of data.
-sumGeno <- function(dp,ws=1,loci,lociSNP=loci,avg=FALSE){   
+sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){   
     L <- length(dp)    
-    S <- c( seq(loci[1],loci[length(loci)-1],ws), loci[length(loci)] )
+    S <- seq(loci[1],loci[length(loci)],ws)
+    S <- c(S, loci[length(loci)] )
+    
     res <- sapply(1:(length(S)-1), function(ll){
-        idx <- which(lociSNP>S[ll] & lociSNP<S[ll+1])
-        v <- dp[idx]
+        if(ll<(length(S)-1))
+            idx <- which(lociSNP>=S[ll] & lociSNP<S[ll+1])
+        if(ll==(length(S)-1))
+            idx <- which(lociSNP>=S[ll] & lociSNP<=S[ll+1])
+        if(length(idx)==0)
+            return(c())
+        v <- dp[findSNP[idx]]
         if(!avg)
             return( sum( v ) )
         if(avg)
             return( mean(v) )
     })
-    return(res)
+    return(unlist(res))
 }
+
 
 ##sum of logarithm on rows of a matrix
 rowSumsLog <- function(X){
@@ -939,12 +943,14 @@ rowSumsLog <- function(X){
    
 
 ##Likelihood of f=data vector given genotype. gl=genotype likelihoods vector. h=inbreeding coefficient.
-pGenoData <- function(f,gl,nInd=1,h=0){   
+pGenoData <- function(f,gl,nInd=1,findSNP=1:length(f),h=0){   
+#    f <- f[findSNP]
+#    print(length(f))
     y = ncol(gl)-1
     Lf = length(f)
     nInd = dim(gl)[1] / Lf
     
-    matrix( rep(  dbinom(0:y,y,f,log=TRUE), nInd ), nrow=nInd, byrow=T )
+    #print( matrix( rep(  dbinom(0:y,y,f,log=TRUE), nInd ), nrow=nInd, byrow=T ) )
 
     X <- c()
     for(l in 1:length(f)){
@@ -961,14 +967,41 @@ pGenoData <- function(f,gl,nInd=1,h=0){
 }
 
 
-pGenoDataSingle <- function(f,gl,h=0){   
+freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci)){   
+    L <- length(major)    
+    S <- seq(loci[1],loci[length(loci)],ws)
+    S <- c(S, loci[length(loci)] )
+    winLength <- rep(0, length(S)-1)
+    
+    res <- sapply(1:(length(S)-1), function(ll){
+        if(ll<(length(S)-1)){
+            idx <- which(lociSNP>=S[ll] & lociSNP<S[ll+1])
+            outL <- sum(loci>=S[ll] & loci<S[ll+1])
+            }
+        if(ll==(length(S)-1)){
+            idx <- which(lociSNP>=S[ll] & lociSNP<=S[ll+1])
+            outL <- sum(loci>=S[ll] & loci<=S[ll+1])
+            }
+        if(length(idx)==0)
+            return(c())
+        #if(length(idx)==0)
+        #    return(NA)
+        num <- minor[findSNP[idx]]
+        den <- num + major[findSNP[idx]]
+        return( c(mean(num/den, na.rm=TRUE), outL) )
+    })
+    return( list(winF=res[1,], winL=res[2,]) )
+}
+
+
+pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time
     y = ncol(gl)-1
     Lf = dim(gl)[1]
     fVector=rep(f,Lf)
     nInd = 1
     
     matrix( rep(  dbinom(0:y,y,fVector,log=TRUE), nInd ), nrow=nInd, byrow=T )
-
+    
     X <- c()
     for(l in 1:Lf){
 
@@ -1035,7 +1068,7 @@ maxPloidy <- as.numeric(maxPloidy)
 ### Begin file-by-file analysis #################
 #################################################
 
-for(i in 1:length(fileVector)){
+for(i in 1:length(fileVector)){ #loop over input files
     
     cat("==> Analyze ", filez[i], "\n",sep="")
     ##read in the data from .mafs and .genolikes files
@@ -1050,7 +1083,7 @@ for(i in 1:length(fileVector)){
     #calculate allele frequencies
     majorReads <- GL[,8]
     minorReads <- GL[,9]
-    freqs <- alleleFrequencies(majorReads,minorReads,nInd,minInd,eps)
+    freqs <- alleleFrequencies(majorReads,minorReads,nInd,minInd,eps) #frequencies (used for SNPs on a single individual)
     
     GL <- GL[ ,-c(1:9)]
     
@@ -1066,7 +1099,7 @@ for(i in 1:length(fileVector)){
     ##open pdf plot connection
     pdf(outPdf[i])
 
-    for(whichInd in chosenInd){
+    for(whichInd in chosenInd){ #loop over individuals
         
         #if(directInputPar==FALSE){
         #    alpha=as.vector(as.numeric(params[[i]][2*whichInd - 1, 1:maxPloidy ]))
@@ -1075,19 +1108,24 @@ for(i in 1:length(fileVector)){
     
     ##select single individual depth and genolikes
         idxSingle <- seq(whichInd,rowsGL,nInd)
+        majorSingle <- majorReads[idxSingle]
+        minorSingle <- minorReads[idxSingle]
         DPsingle <- DP[idxSingle]; GLsingle <- GL[idxSingle, ] #individual depth/genolikes
     ##trim the depth at the chosen quantile
         quantiles <- eval( parse( text=paste("c(",quantileTrim,")",sep="") ) )
         q <- quantile( DPsingle, quantiles )  
         idx <- which( DPsingle<=as.numeric(q[2]) & DPsingle>=as.numeric(q[1]) )
-        DPsingle <- DPsingle[idx] #individual filtered datad
+        DPsingle <- DPsingle[idx] #individual filtered data
         GLsingle <- GLsingle[idx, ] #...""
         sitesIndiv <- sites[idx] #......""
         freqsIndiv <- freqs[idx] #......""
+        majorSingle <- majorReads[idx] #......""
+        minorSingle <- minorReads[idx] #......""
         idxTot = as.vector( sapply(idx, function(j) ((j-1)*nInd+1):(j*nInd) ) )
         GLfiltered <- GL[idxTot, ] #all data filtered
         DPfiltered <- DP[idxTot] #......""
 
+        
         ##find SNPs with thresholds .1<f<.9
         findSNP <- which(freqsIndiv>.1 & freqsIndiv<.9)
         freqsSNP <- freqsIndiv[findSNP]
@@ -1095,31 +1133,49 @@ for(i in 1:length(fileVector)){
         totSNP <- as.vector( sapply(findSNP, function(j) ((j-1)*nInd+1):(j*nInd) ) )
         ##DPSNP = DPsingle[totSNP] I think it is not needed
 
+        
+                                        #frequencies over windows
+        #print(majorSingle)
+        #print(minorSingle)
+        winFreq <- freqsSingle( majorSingle, minorSingle, ws=wind, sitesIndiv, sitesSNP, findSNP)
+        #print(winFreq)
+        #print( length(majorSingle) )
+        #print(length(sitesIndiv))
+        #print(length(findSNP))
+        print( length(winFreq) )
+                                        #geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
+        geno2 <- matrix(0, nrow=maxPloidy, ncol=length(winFreq))
+        for(pp in 1:maxPloidy) #change ploidy
+            #geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
+            geno2[pp,] <- pGenoData( f=winFreq, gl=readGL( 1:length(winFreq), pp, nInd=1, GLsingle ), findSNP=findSNP,nInd=1 )
+            ##...and per window
+        geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP,findSNP) )
+        print(geno)
         ##THIS CALCULATION IS NEEDED ONLY THE FIRST TIME (fileCounter==1).    
         ##probability of data given genotype, ploidy and frequencies (per SNP)...
-        if(fileCounter==1){
-            geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
-            for(pp in 1:maxPloidy) #change ploidy
-                geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
+        #if(fileCounter==1){
+        #    geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
+        #    for(pp in 1:maxPloidy) #change ploidy
+        #        geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
             ##...and per window
-            geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP) )
-        }
+        #    geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP) )
+        #}
         ##mean depth over each locus in a window (not only on SNPs)
         ##use sumGeno(DPsingle,wind,sitesIndiv,sitesSNP,avg=TRUE)
         ##to apply only the average on SNPs (very noisy result)
-        DPmean <- sumGeno( DPsingle, wind, sitesIndiv, sitesIndiv, avg=TRUE )
-
+        DPmean <- sumGeno( DPsingle, wind, sitesIndiv, sitesIndiv, 1:length(sitesIndiv), avg=TRUE )
         ##clean from NA, NaN or infinite values
-        keepSites <- apply( geno, 1, function(x) sum(is.na(x) | is.nan(x) | is.infinite(x))==0 )   
-        DPmean = DPmean[keepSites]
-        geno = geno[keepSites, ]
-        keepSites <- which( !is.na(DPmean) & !is.nan(DPmean) & !is.infinite(DPmean) )
-        DPmean = DPmean[keepSites]
-        geno = geno[keepSites,]
-
+        keepSites <- apply( geno, 1, function(x) sum(is.na(x) | is.nan(x) | is.infinite(x))==0 )
+        print(which(keepSites))
+        DPmean <- DPmean[which(keepSites)]
+        geno <- geno[which(keepSites), ]
+        #keepSites <- which( !is.na(DPmean) & !is.nan(DPmean) & !is.infinite(DPmean) )
+        #print(keepSites)
+        #DPmean = DPmean[keepSites]
+        #geno = geno[keepSites,]
         ##rescale likelihood of the data (avoids underflow)
         genoResc <- t( apply( geno , 1, logRescale ) )
-
+        genoResc[genoResc>-.00001]=-.00001
         ##some initial parameters
         delta=rep(1/maxPloidy,maxPloidy) #i think it is ok without prior info
         Pi0=matrix(1/maxPloidy,nrow=maxPloidy,ncol=maxPloidy) #tridiagonal makes more sense?
