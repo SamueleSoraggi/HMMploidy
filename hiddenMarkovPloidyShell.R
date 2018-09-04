@@ -51,7 +51,8 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
            minInd = 1, #min ind having reads 
            chosenInd = NA, #which Individual to consider (one at the time for now)
            #Must implement option for: all ind together or one at the time ?
-           #isSims = FALSE, #data is simulated. if TRUE fileList will also refer to file(s) with true ploidies
+                                        #isSims = FALSE, #data is simulated. if TRUE fileList will also refer to file(s) with true ploidies
+           truePl = NA, #true ploidies (as argument c(truePl) of an R vector)
            alpha = NA, #alpha parameters comma separated
            beta = NA, #beta parameters comma separated
            quantileTrim ="0,1", #quantiles for trimming
@@ -160,25 +161,26 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
         for(i in 1:(length(borderVal)))
             xlabels[i] <- sprintf("%.1f", borderVal[i]/(1e+3))
     }
-    #print(xlabels)
     
     layout(matrix(c(1,1,1,1,2,2), nrow = 3, ncol = 2, byrow = TRUE))
     
-    plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.5, cex.main=1.4, cex.lab=1.2)
+    plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", bty="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.5, cex.main=1.4, cex.lab=1.2)
     
-    if(!is.null(truePl))
+    if(!is.na(truePl))
         points(truePl-.075 , pch=15, lwd=.75, col="coral", cex=.5)
    
     abline( h=seq( min(V$y,truePl), max(V$y,truePl) ), col="gray" )
 
     axis( side=1, at=seq(1,length(V$y),length.out=min(20,length(V$y))), labels=xlabels, las=2, cex=1 )
     axis( side=2, at=seq(min(V$y), max(V$y)) )
-    
 
     postProb <- hmm$postprob
     counter=1
     for(yValue in intersect(hmm$states,seq(min(V$y,truePl), max(V$y,truePl)))){
         polygon( x=c( length(V$y),1, seq(1,length(V$y)), length(V$y) ), y= yValue + 0.025 + c( 0, 0, postProb[,counter], 0 )/2, col="deepskyblue1", border=NA)
+        lines( x=c(length(V$y)+.3,length(V$y)+.3), y=c(yValue+.025,yValue+0.525), col="deepskyblue1" )
+        text(labels="0", x=length(V$y)+.5, y=yValue+.1)
+        text(labels="1", x=length(V$y)+.5, y=yValue+.45)
         counter=counter+1
     }
     
@@ -261,9 +263,6 @@ nbm_em <- function(count, alpha, beta, wght, NBM_NIT_MAX=250, NBM_TOL=1e-2){
 	
 	# Data length
 	Total <- length(count)	
-	#if(any(count < 0) || any(count != round(count))){
-	#	stop("Data does not contain positive integers.")
-	#}
 	
 	count <- matrix(count, nrow=Total, 1)
 	# Number of mixture components
@@ -302,8 +301,8 @@ nbm_em <- function(count, alpha, beta, wght, NBM_NIT_MAX=250, NBM_TOL=1e-2){
 				- count %*% log(1+beta) + lgamma(count %*% matrix(1, ncol=N) + matrix(1, nrow=Total) %*% alpha)
 				- dnorm %*% matrix(1, ncol=N) )
     
-    # set zero value to the minimum double to avoid -inf when applying log
-    # due to large dnorm (or essential large count)
+                # set zero value to the minimum double to avoid -inf when applying log
+                # due to large dnorm (or essential large count)
 		postprob <- apply(postprob, 2, function(x) {x[x==0] <- .Machine$double.xmin; x})
         
 		postprob <- postprob * (matrix(1, Total, 1) %*% wght)
@@ -773,7 +772,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
         E <- EStep(count,delta,TRANS,alpha,beta,geno)
 
         logl[nit] <- E$llk
-        #message(sprintf('Iter %d:\tLLK=%.3f\tploidies=%d', (nit-1), logl[nit], dim(alpha)[2] ) )	
+        #message( sprintf( 'Iter %d:\tLLK=%.3f\tploidies=%d', (nit-1), logl[nit], dim(alpha)[2] ) )	
         if(is.nan(logl[nit])) {			
             warning("NaN logl data detected. Returning the previous training results")
             logl[nit] <- 0; TRANS=TRANS0; alpha=alpha0; beta=beta0;  logl=logl0; bckwrd=postprob0; dens=dens0
@@ -928,9 +927,21 @@ sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){
 }
 
 
-##sum of logarithm on rows of a matrix
+##sum of logarithm on rows and cols of a matrix
 rowSumsLog <- function(X){
     res <- apply(X, 1, function(t){
+        m <- max(t)
+        w <- which.max(t)
+        diffVec <- t[-w] - m
+        diffVec[diffVec < -700] <- -700
+        diffVec[diffVec == 0] <- -0.0001
+        return( m + log( 1 + sum( exp( diffVec ) ) ) )
+    })
+    return( res )
+}
+
+colSumsLog <- function(X){
+    res <- apply(X, 2, function(t){
         m <- max(t)
         w <- which.max(t)
         diffVec <- t[-w] - m
@@ -943,25 +954,22 @@ rowSumsLog <- function(X){
    
 
 ##Likelihood of f=data vector given genotype. gl=genotype likelihoods vector. h=inbreeding coefficient.
-pGenoData <- function(f,gl,nInd=1,findSNP=1:length(f),h=0){   
-#    f <- f[findSNP]
-#    print(length(f))
+pGenoData <- function(f,winL,gl,nInd=1,findSNP=1:sum(winL),h=0){   
     y = ncol(gl)-1
-    Lf = length(f)
-    nInd = dim(gl)[1] / Lf
-    
-    #print( matrix( rep(  dbinom(0:y,y,f,log=TRUE), nInd ), nrow=nInd, byrow=T ) )
+    Lf = sum(winL)
+    winIdx=cumsum(c(0,winL))
 
-    X <- c()
+    X <- rep(0,Lf)
     for(l in 1:length(f)){
 
         freq <- f[l]
-        idx <- ((l-1)*nInd+1):(l*nInd)
+        idx <- (winIdx[l]+1):(winIdx[l+1])
         p <- dbinom(0:y,y,freq,log=TRUE)
         p[is.infinite(p)]=-1000
-        glSum <- gl[idx,] + matrix( rep(  dbinom(0:y,y,freq,log=TRUE), nInd ), nrow=nInd, byrow=T )
-        X[l] <- sum( rowSumsLog( glSum ) ) 
-        
+        #glSum <- gl[idx,] + matrix( rep( p, nInd*length(idx) ), nrow=nInd*length(idx), byrow=T )
+        glSum <- apply( gl[idx,], 1, function(r) r + p )
+        X[(winIdx[l]+1):(winIdx[l+1])] <- colSumsLog( glSum )
+        #print(X[(winIdx[l]+1):(winIdx[l]+2)])
     }
     return( X )    
 }
@@ -992,6 +1000,8 @@ freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci))
     })
     return( list(winF=res[1,], winL=res[2,]) )
 }
+
+
 
 
 pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time
@@ -1056,7 +1066,8 @@ Viterbi <- function(hmm){
 
 wind <- as.numeric(wind) #window size
 minInd <- as.numeric(minInd)
-maxPloidy <- as.numeric(maxPloidy) 
+maxPloidy <- as.numeric(maxPloidy)
+truePl <- eval(parse(text=truePl))
 #nInd=as.numeric(nInd) #number of individuals
 #GLsingle #genolikes on ploidies (all and single individual)
 #DPsingle #depths (all and single individual)
@@ -1137,18 +1148,22 @@ for(i in 1:length(fileVector)){ #loop over input files
                                         #frequencies over windows
         #print(majorSingle)
         #print(minorSingle)
-        winFreq <- freqsSingle( majorSingle, minorSingle, ws=wind, sitesIndiv, sitesSNP, findSNP)
+        winAnalysis <- freqsSingle( majorSingle, minorSingle, ws=wind, sitesIndiv, sitesSNP, findSNP)
+        winFreq <- winAnalysis$winF
+        winLth <- winAnalysis$winL
         #print(winFreq)
         #print( length(majorSingle) )
         #print(length(sitesIndiv))
         #print(length(findSNP))
-        print( length(winFreq) )
+        print( winLth )
+        print( winFreq )
                                         #geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
-        geno2 <- matrix(0, nrow=maxPloidy, ncol=length(winFreq))
+        geno2 <- matrix(0, nrow=maxPloidy, ncol=sum(winLth))
         for(pp in 1:maxPloidy) #change ploidy
             #geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
-            geno2[pp,] <- pGenoData( f=winFreq, gl=readGL( 1:length(winFreq), pp, nInd=1, GLsingle ), findSNP=findSNP,nInd=1 )
-            ##...and per window
+            geno2[pp,] <- pGenoData( f=winFreq, winL=winLth, gl=readGL( 1:sum(winLth), pp, nInd=1, GLsingle ), findSNP=findSNP, nInd=1 )
+        ##...and per window
+        print(dim(geno2))
         geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP,findSNP) )
         print(geno)
         ##THIS CALCULATION IS NEEDED ONLY THE FIRST TIME (fileCounter==1).    
@@ -1226,7 +1241,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         
     ##plot ploidy inference    
         stringPlot <- sprintf("\tInferred ploidies from %s\nindividual %d", BASENAMEFILE[i], whichInd)
-        hmmPlotting(hmmRes, V, truePl=NULL, main=stringPlot)
+        hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot)
     
     ##print on screen    
         cat(sprintf("\tInferred ploidies from %s individual %d\n", BASENAMEFILE[i], whichInd))
