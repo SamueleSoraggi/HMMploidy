@@ -43,10 +43,10 @@ Overview: simulate poliploidy `mpileup.gz` files
 
 ### Options 
 
-* `-p` or `--ploidy`: vector of $K$ ploidy numbers in the output in the format $p_1,p_2,p_3,...,p_K$. No default
-* `-d` or `--depth`: vector of $J$ haploid depths, each used for a simulation $d_1,d_2,d_3,...,d_J$. No default
-* `-n` or `--nSamples`: vector of $M$ haploid depths, each used for a simulation $n_1,n_2,n_3,...,n_M$. No default
-* `-l` or `--loci`: number of loci used in each chromosome. No default
+* `-p` or `--ploidy`: sequence of $K$ ploidy numbers in the output in the format $p_1,p_2,...,p_K$. No default
+* `-l` or `--loci`: sequence of $K$ number of loci $l_1,l_2,...,l_K$ used in each simulated ploidy number. No default
+* `-d` or `--depth`: vector of $J$ haploid depths $d_1,d_2,...,d_J$, each used for simulating the ploidy sequence. No default
+* `-n` or `--nSamples`: vector of $M$ number of individuals, each used for a simulation $n_1,n_2,...,n_M$. No default
 * `-o` or `--out`: output file name (without extension). Default: out 
 
 ### Output
@@ -56,7 +56,7 @@ One `.mpileup.gz` file for each depth $D$, number of individuals $N$, with the n
 ### Syntax Example
 
 ```Shell
-$PATH/simulationScript.sh -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000 -o outFile
+$SOFTWAREPATH/simulationScript.sh -p 2,4,5,2 -d 10,20 -n 5,10 -l 1000,1000,1000,1000 -o outFile
 ```
 
 ## Inference of ploidy levels
@@ -107,7 +107,7 @@ Simulate a genome called `poliploidyGenome` with sequence of ploidy numbers 2-5-
 
 Simulate the dataset
 ```Shell
-$PATH/simulationScript.sh -p 2,4,5,2 -d 3,8 -n 5,10 -l 1000 -o poliploidyGenome
+$PATH/simulationScript.sh -p 2,4,5,2 -d 3,8 -n 5,10 -l 1000,1000,1000,1000 -o poliploidyGenome
 ```
 
 For each base name of a simulated dataset, there are four simulated `.mpileup.gz` files: `poliploidyGenome.DP3.NIND10.genolikes, poliploidyGenome.DP8.NIND10.genolikes, poliploidyGenome.DP3.NIND5.genolikes, poliploidyGenome.DP8.NIND5.genolikes`, and a file containing the list of prefixes for calculating the genotype likelihoods: `names.poliploidyGenome.filelist`
