@@ -164,10 +164,10 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
     
     layout(matrix(c(1,1,1,1,2,2), nrow = 3, ncol = 2, byrow = TRUE))
     
-    plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", bty="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.5, cex.main=1.4, cex.lab=1.2)
+    plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", bty="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.75, cex.main=1.4, cex.lab=1.2)
     
     if(!is.na(truePl))
-        points(truePl-.075 , pch=15, lwd=.75, col="coral", cex=.5)
+        points(truePl-.075 , pch=15, lwd=.75, col="coral", cex=.75)
    
     abline( h=seq( min(V$y,truePl), max(V$y,truePl) ), col="gray" )
 
@@ -178,9 +178,10 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
     counter=1
     for(yValue in intersect(hmm$states,seq(min(V$y,truePl), max(V$y,truePl)))){
         polygon( x=c( length(V$y),1, seq(1,length(V$y)), length(V$y) ), y= yValue + 0.025 + c( 0, 0, postProb[,counter], 0 )/2, col="deepskyblue1", border=NA)
-        lines( x=c(length(V$y)+.3,length(V$y)+.3), y=c(yValue+.025,yValue+0.525), col="deepskyblue1" )
-        text(labels="0", x=length(V$y)+.5, y=yValue+.1)
-        text(labels="1", x=length(V$y)+.5, y=yValue+.45)
+        lines( x=c(length(V$y)+.4,length(V$y)+.4), y=c(yValue+.025,yValue+0.525), col="deepskyblue1" )
+        text(labels="0", x=length(V$y)+.4, y=yValue-.1)
+        text(labels="1", x=length(V$y)+.4, y=yValue+.6)
+        mtext(text=rep("Posterior",length(yValue)), side=4,at=yValue+.25)
         counter=counter+1
     }
     
