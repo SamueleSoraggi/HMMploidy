@@ -539,7 +539,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                         contDiff <- contDiff + 1
                         resSingle1 <- MStepSingle(count,aa,bb,gg)
                         llk1 <- resSingle1$llk
-                        if(is.nan(E1$llk)){
+                        if(is.nan(llk1)){
                             nanFlag=TRUE
                             break
                             }
@@ -548,7 +548,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                         contDiff <- contDiff + 1
                         resSingle2 <- MStepSingle(count,aa,bb,gg)
                         llk2 <- resSingle2$llk
-                        if(is.nan(E1$llk)){
+                        if(is.nan(llk2)){
                             nanFlag=TRUE
                             break
                             }
@@ -869,7 +869,7 @@ MStepSingle <- function(count,alpha,beta,geno){
     tmp <- alpha + tmp_step
 
     if(any(is.na(tmp)))
-        return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta))
+        return(list(delta=delta,TRANS=TRANS,alpha=alpha,beta=beta,llk=NaN))
     
     while (any(tmp <= 0)){
         warning(sprintf("Alpha (%.4f)<0 ! Try smaller (10%s) Newton step ...\n", tmp_step,"%"))
