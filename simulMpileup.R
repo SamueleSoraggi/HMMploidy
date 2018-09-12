@@ -189,7 +189,7 @@ pder <-c( (1-opt$pvar)*(9/10), ee, (1-opt$pvar)*(1/10) )
 qqVector <- sample(x=seq(0,Ne,1),size=opt$sites,prob=pder,replace=TRUE)/Ne 
 # probability of incorrectly assigning the ancestral state
 pAncErr <- sample(x=c(0,1),size=opt$sites,prob=c(1-opt$panc,opt$panc),repl=TRUE)
-qqVector[which(pAncErr)] <- 1-qqVector[which(pAncErr)]
+qqVector[which(pAncErr==1)] <- 1-qqVector[which(pAncErr==1)]
 
 
 for (i in 1:opt$sites) {
