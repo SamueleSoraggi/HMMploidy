@@ -23,7 +23,8 @@ spec=matrix(c(
 	      'pool', 'p', 0, "logical", "enable pool data",
 	      'help', 'h', 0, "logical", "print help message",
 	      'verbose', 'v', 0, "logical", "verbose creates log file",
-	      'offset', 'f', 0, "integer", "offset value for genomic position"
+              'offset', 'f', 0, "integer", "offset value for genomic position",
+              'seed','u', 2, "integer", "random seed for simulations reproducibility [default 180218]"
 	      ), byrow=TRUE, ncol=5)
 opt <- getopt(spec)
 
@@ -46,6 +47,10 @@ if (is.null(opt$pool)) opt$pool <- FALSE
 if (is.null(opt$offset)) opt$offset <- 0
 if (is.null(opt$lendepth)) opt$lendepth <- 0
 if (is.null(opt$errdepth)) opt$errdepth <- 0.05
+if (is.null(opt$seed)) opt$seed <- 180218
+
+# set seed 
+set.seed(opt$seed)
 
 # switch panc to 1-panc for old consistency to previous version
 opt$panc <- 1-opt$panc
@@ -104,18 +109,21 @@ if (opt$lendepth>0) {
 
 	for (j in 1:nsams) {
 
-		indexes <- c(1)
-		toBeTaken <- 2:nsites
+            indexes <- c(1)
+            toBeTaken <- 2:nsites
 
-		i <- 2
+            i <- 2
+            lengths <- rpois(nsites, opt$lendepth)
+            increasing <- sample(x=c(0,1),size=nsites,prob=c(.5,.5),replace=TRUE)
+            
 		while (i <= nsites) {
 
-			lenSeg <- rpois(1, opt$lendepth)
-
-			increasing <- sample(c(0,1),1)
+			#lenSeg <- rpois(1, opt$lendepth)
+                        lenSeg <- lengths[i]
+			#increasing <- sample(c(0,1),1)
 
 			ind <- c()
-			if (increasing) {
+			if (increasing[i]) {
 				ind <- toBeTaken[which(depth[j,toBeTaken]>=depth[j,i])[1:lenSeg]]
 			} else {
 				ind <- toBeTaken[which(depth[j,toBeTaken]<=depth[j,i])[1:lenSeg]]
@@ -176,6 +184,14 @@ pder <-c( (1-opt$pvar)*(9/10), ee, (1-opt$pvar)*(1/10) )
 # if depth is 0, replace with only 1 read with very low quality
 
 #for (i in valid) { # cycle across sites
+
+# sample derived allele frequency
+qqVector <- sample(x=seq(0,Ne,1),size=opt$sites,prob=pder,replace=TRUE)/Ne 
+# probability of incorrectly assigning the ancestral state
+pAncErr <- sample(x=c(0,1),size=opt$sites,prob=c(1-opt$panc,opt$panc),repl=TRUE)
+qqVector[which(pAncErr)] <- 1-qqVector[which(pAncErr)]
+
+
 for (i in 1:opt$sites) {
 
 	# if pool, initialise
@@ -190,10 +206,11 @@ for (i in 1:opt$sites) {
 	daf <- 0
 
 	# sample derived allele frequency
-	qq <- sample(x=seq(0,Ne,1),size=1,prob=pder)/Ne
+	#qq <- sample(x=seq(0,Ne,1),size=1,prob=pder)/Ne
+        qq <- qqVector[i] 
 
-	# probability of incorrectly assigning the ancestral state
-	if (sample(x=c(0,1),size=1,prob=c(1-opt$panc,opt$panc),repl=F)) qq <- 1-qq
+        # probability of incorrectly assigning the ancestral state
+	#if (sample(x=c(0,1),size=1,prob=c(1-opt$panc,opt$panc),repl=F)) qq <- 1-qq
 
 	pp <- 1-qq
 	linea_real <- c(linea_real, qq)
