@@ -107,7 +107,7 @@ do
 
 	    A=`Rscript -e "cat($DP*$PL)"` #ploidy level depth
 	    #echo $A
-	    Rscript ${SCRIPTFOLDER}/simulMpileup.R --out test.$NAME.txt --copy ${PL}x${SAM} --sites ${sites[$SITESCOUNTER]} --depth $A --qual 20 --ksfs 1 --ne 10000 --offset $offset --seed $seedInput --pvar $pvarInput | gzip -c -f > $NAME.BUFFER.mpileup.gz
+	    Rscript ${SCRIPTFOLDER}/simulMpileup.R --out $NAME.test.txt --copy ${PL}x${SAM} --sites ${sites[$SITESCOUNTER]} --depth $A --qual 20 --ksfs 1 --ne 10000 --offset $offset --seed $seedInput --pvar $pvarInput | gzip -c -f > $NAME.BUFFER.mpileup.gz
 
 	    printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))"
 
@@ -123,7 +123,7 @@ do
 	done
 
 	#handle some stuff
-	rm -f test.$NAME.txt $NAME.BUFFER.mpileup.gz
+	rm -f $NAME.test.txt $NAME.BUFFER.mpileup.gz
 	cat $NAME.BUFFER.txt | gzip -c > $NAME.mpileup.gz
 	rm -f $NAME.BUFFER.txt
 	echo $NAME >> $FILELIST
