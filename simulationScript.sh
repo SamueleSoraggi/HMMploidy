@@ -8,6 +8,7 @@ do
     minDp=0
     freqs=(0 0 0)
     BASENAME=./out
+    pvar=1
     
     case $key in
 	-o|--out)
@@ -44,12 +45,16 @@ do
 	    shift # past argument
 	    shift # past value
 	    ;;
-	#-g|--minGlobalDepth)
-	#    minDp="$2"
-	#    #IFS=',' read -ra minDp <<< "$minDp1"
-	#    shift # past argument
-	#    shift # past value
-	#    ;;
+	-r|--pvar)
+	    pvarInput="$2"
+	    shift # past argument
+	    shift # past value
+	    ;;
+	-g|--rndGenerator)
+	    seedInput="$2"
+	    shift # past argument
+	    shift # past value
+	    ;;
 	#-m|--minInd)
 	#    minInd="$2"
 	#    #IFS=',' read -ra minInd <<< "$minInd1"
@@ -102,7 +107,7 @@ do
 
 	    A=`Rscript -e "cat($DP*$PL)"` #ploidy level depth
 	    #echo $A
-	    Rscript ${SCRIPTFOLDER}/simulMpileup.R --out test.DP${DP}.NIND${SAM}.txt --copy ${PL}x${SAM} --sites ${sites[$SITESCOUNTER]} --depth $A --qual 20 --ksfs 1 --ne 10000 --offset $offset | gzip -c -f > $NAME.BUFFER.mpileup.gz
+	    Rscript ${SCRIPTFOLDER}/simulMpileup.R --out test.DP${DP}.NIND${SAM}.txt --copy ${PL}x${SAM} --sites ${sites[$SITESCOUNTER]} --depth $A --qual 20 --ksfs 1 --ne 10000 --offset $offset --seed $seedInput --pvar $pvarInput | gzip -c -f > $NAME.BUFFER.mpileup.gz
 
 	    printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))"
 
