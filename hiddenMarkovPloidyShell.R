@@ -1,6 +1,7 @@
 library(pracma) #strcmp function library
 library(data.table) #fread function library
 library(Rcpp)
+set.seed(041205)
 
 ##############################
 ### script input interface ###
@@ -123,6 +124,7 @@ if(!(is.na(alpha) | is.na(beta))){
 wind <- as.numeric(wind)
 minInd <- as.numeric(minInd)
 maxPloidy <- as.numeric(maxPloidy)
+eps <- as.numeric(eps)
 #flags
 isNumericChosenInd <- all(!is.na(chosenInd)) #check for choice of individuals
 
@@ -146,27 +148,31 @@ cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " c
 ############################
 
 
-hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
+hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies"){
     options(warn=-1)
     loci = hmm$lociSNP
     borderVal <- round( seq(min(loci),max(loci),length.out=min(20,length(V$y)) ) )
     xlabels=c()
     if(max(loci)>=1e+6){
-        XLAB="Scaffold Position (Mb)"
+        XLAB="Position (Mb)"
         for(i in 1:(length(borderVal)))
             xlabels[i] <- sprintf("%.1f", borderVal[i]/(1e+6))
     }
     if(max(loci)<1e+6){
-        XLAB="Scaffold Position (Kb)"
+        XLAB="Position (Kb)"
         for(i in 1:(length(borderVal)))
             xlabels[i] <- sprintf("%.1f", borderVal[i]/(1e+3))
     }
     
     layout(matrix(c(1,1,1,1,2,2), nrow = 3, ncol = 2, byrow = TRUE))
-    
+
+    oldTruePl <- truePl
+    if(is.na(truePl))
+        truePl <- V$y
+
     plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", bty="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.75, cex.main=1.4, cex.lab=1.2)
     
-    if(!is.na(truePl))
+    if(!is.na(oldTruePl))
         points(truePl-.075 , pch=15, lwd=.75, col="coral", cex=.75)
    
     abline( h=seq( min(V$y,truePl), max(V$y,truePl) ), col="gray" )
@@ -181,7 +187,7 @@ hmmPlotting <- function(hmm, V, truePl=NULL, main="Inferred ploidies"){
         lines( x=c(length(V$y)+.4,length(V$y)+.4), y=c(yValue+.025,yValue+0.525), col="deepskyblue1" )
         text(labels="0", x=length(V$y)+.4, y=yValue-.1)
         text(labels="1", x=length(V$y)+.4, y=yValue+.6)
-        mtext(text=rep("Posterior",length(yValue)), side=4,at=yValue+.25)
+        mtext(text=rep("Posterior",length(yValue)), side=4,at=yValue+.25,cex=.7)
         counter=counter+1
     }
     
@@ -205,7 +211,7 @@ options(warn=0)
 }
 
 
-cppFunction('NumericVector alleleFrequencies(NumericVector major,NumericVector minor, int nInd, int minInd, double eps){
+cppFunction('NumericVector alleleFrequencies(NumericVector major, NumericVector minor, int nInd, int minInd, double eps){
 
 int totCountsNorm = 0;
 int sites = major.size()/nInd;
@@ -402,40 +408,28 @@ EStep <- function(count,delta,TRANS,alpha,beta,genolike){
     dens2 <- matrix(0,nrow=nrow(densLog),ncol=dim(genolike)[2])
     for(ii in 1:dim(genolike)[2]) dens2[,ii] <- densLog[,ii] + genolike[,ii]
     
-    #dens <- exp( densLog )
     dens2 <- exp( dens2 )
-
-    #dens <- apply(dens, 2, function(x) {x[x==0 | is.na(x) | is.nan(x)] <- .Machine$double.xmin; x})        
     dens2 <- apply(dens2, 2, function(x) {x[x==0 | is.na(x) | is.nan(x)] <- .Machine$double.xmin; x})
     
-    
-    #forwrd[1,] <- delta*dens[1,];
     forwrd2[1,] <- delta*dens2[1,]
 		
     for(t in 2:Total){
-                                        #forwrd[t,] <- (forwrd[t-1,] %*% TRANS) * dens[t,]
         forwrd2[t,] <- (forwrd2[t-1,] %*% TRANS) * dens2[t,]
-        #scale[t] <- sum(forwrd[t,])
         scale2[t] <- sum(forwrd2[t,])
-        #forwrd[t,] <- forwrd[t,] / scale[t]
         forwrd2[t,] <- forwrd2[t,] / scale2[t]
     }
 				
     llk <- log(sum(forwrd2[Total,])) + sum(log(scale2))
 
-    #bckwrd[Total,] <- matrix(1, ncol=N)
     bckwrd2[Total,] <- matrix(1, ncol=N)
     
     for(t in (Total-1):1) {			
-        #bckwrd[t,] <- (bckwrd[t+1,] * dens[t+1,]) %*% t(TRANS)
         bckwrd2[t,] <- (bckwrd2[t+1,] * dens2[t+1,]) %*% t(TRANS)
-        #bckwrd[t,] <- bckwrd[t,] / scale[t]
         bckwrd2[t,] <- bckwrd2[t,] / scale2[t]
     }
 	
     ni <- forwrd2 * bckwrd2
     ni <- ni / ( apply(ni, 1, sum) %*% matrix(1,ncol=N) )
-    #bckwrd=bckwrd2
     return(list(forwrd=forwrd,bckwrd=bckwrd,ni=ni,llk=llk,dens=dens,forwrd2=forwrd2,bckwrd2=bckwrd2,dens2=dens2))
 }
 
@@ -536,7 +530,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                     bb <- beta[,kk]; bb <- matrix(bb,ncol=length(bb))
                     nanFlag <- FALSE
                     
-                    while(diff >= 0.001 & contDiff < 150){
+                    while(diff >= 0.0001 & contDiff < 150){
                         contDiff <- contDiff + 1
                         resSingle1 <- MStepSingle(count,aa,bb,gg)
                         llk1 <- resSingle1$llk
@@ -572,7 +566,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
                 contDiff <- 0
                 nanFlag=FALSE
                 ##get the AIC using 2 states
-                while(diff >= 0.001 & contDiff < 150){
+                while(diff >= 0.0001 & contDiff < 150){
                     contDiff = contDiff + 1
                     E1 <- EStep(count,delta,TRANS,alpha,beta,geno)
                     if(is.nan(E1$llk)){
@@ -704,7 +698,7 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
             LLtestOld=c(+Inf,+Inf)
             contDiff <- 0
             
-            while(diff >= 0.001 & contDiff < 250){
+            while(diff >= 0.0001 & contDiff < 250){
                 
                 contDiff = contDiff + 1
                 E1 <- EStep(count,delta,TRANS,alpha,beta,geno)
@@ -781,26 +775,25 @@ nbHMM <- function(count, delta, TRANS, alpha, beta, genolike=0, ws=1, PLOIDYMAX=
         }
   
         M <- MStep(E,count,TRANS,alpha,beta)
-        TRANS <- M$TRANS
+        alphaPrev <- alpha #backup
+        betaPrev <- beta
+        TRANSprev <- TRANS
+        deltaPrev <- delta
+        TRANS <- M$TRANS #new values
         alpha <- M$alpha
         beta <- M$beta
         bckwrd <- E$ni
         dens <- E$dens2
         delta <- M$delta
 
-        
         if(any(is.na(M$alpha))) {
             warning(sprintf("Updated alpha becomes NA probably %s","due to bad initial alpha or insuff. data"))
-            TRANS=TRANS0; alpha=alpha0; beta=beta0; logl=logl0; bckwrd=postprob0; dens=dens0
-            #break
+            return(list(count=count, delta=deltaPrev, TRANS=TRANSprev, alpha=alphaPrev, beta=betaPrev, logl=logl, postprob=bckwrd, dens=dens, mu = alphaPrev/betaPrev, sigma=alphaPrev/betaPrev+alphaPrev/betaPrev^2, states=stateVec)	)
         }
         if(any(is.na(M$beta))) {
-            warning(sprintf("Updated beta becomes NA probably %s","due to bad initial alpha or insuff. data"))
-            TRANS=TRANS0; alpha=alpha0; beta=beta0; logl=logl0; bckwrd=postprob0; dens=dens0
-            #break
+            warning(sprintf("Updated beta becomes NA probably %s","due to bad initial alpha orE$dens2 insuff. data"))
+            return(list(count=count, delta=deltaPrev, TRANS=TRANSprev, alpha=alphaPrev, beta=betaPrev, logl=logl, postprob=bckwrd, dens=dens, mu = alphaPrev/betaPrev, sigma=alphaPrev/betaPrev+alphaPrev/betaPrev^2, states=stateVec)	)
         }
-
-
         
         if(any(M$alpha > MAXALPHA) || any(M$beta > MAXBETA)) {
             warning(sprintf("Updated alpha (%f) or beta (%f) becomes too large probably %s",alpha, beta, "due to bad initial alpha or large count"))
@@ -910,7 +903,6 @@ sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){
     L <- length(dp)    
     S <- seq(loci[1],loci[length(loci)],ws)
     S <- c(S, loci[length(loci)] )
-    
     res <- sapply(1:(length(S)-1), function(ll){
         if(ll<(length(S)-1))
             idx <- which(lociSNP>=S[ll] & lociSNP<S[ll+1])
@@ -918,7 +910,7 @@ sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){
             idx <- which(lociSNP>=S[ll] & lociSNP<=S[ll+1])
         if(length(idx)==0)
             return(c())
-        v <- dp[findSNP[idx]]
+        v <- dp[idx]
         if(!avg)
             return( sum( v ) )
         if(avg)
@@ -926,6 +918,63 @@ sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){
     })
     return(unlist(res))
 }
+
+sumGenoAll <- function(dp,ws=1,loci,lociSNP=loci,avg=FALSE){   
+    L <- length(dp)    
+    S <- c( seq(loci[1],loci[length(loci)-1],ws), loci[length(loci)] )
+    res <- sapply(1:(length(S)-1), function(ll){
+        idx <- which(lociSNP>S[ll] & lociSNP<S[ll+1])
+        print(idx)
+        v <- dp[idx]
+        if(!avg)
+            return( sum( v ) )
+        if(avg)
+            return( mean(v) )
+    })
+    return(res)
+}
+
+#########WINDOWIZED FUNCTIONS
+sumGeno <- function(g,wind,lociSNP){ #at least a SNP is present in each window with our windowBuilder function
+    L <- length(g)    
+    res <- sapply(1:dim(wind)[1], function(ll){
+        idx <- which(lociSNP>=wind[ll,1] & lociSNP<=wind[ll,2])
+        v <- g[idx]
+        return( sum(v, na.rm=TRUE) )
+    })
+    return(res)
+}
+
+meanGeno <- function(dp,wind,loci){ #NO SNPS USED ON DEPTH AVERAGE
+    L <- length(dp)    
+    res <- sapply(1:dim(wind)[1], function(ll){
+        idx <- which(loci>=wind[ll,1] & loci<=wind[ll,2])
+        v <- dp[idx]
+        return( mean(v, na.rm=TRUE) )
+    })
+    return(res)
+}
+
+windowsBuilder <- function(minSize, loci, lociSNP){ #do windows and merge them when one is empty
+    S <- c( seq(loci[1], loci[length(loci)-1], minSize), loci[length(loci)] )
+    res <- sapply(1:(length(S)-1), function(ll){
+        idx <- which(lociSNP>S[ll] & lociSNP<S[ll+1])
+        if(length(idx)==0 && ll<(length(S)-1))
+            return(ll+1)
+        if(length(idx)==0 && ll==(length(S)-1))
+            return(ll)
+    })
+    
+    if(!is.null(unlist(res)))
+        S <- S[-c(unique(unlist(res)))]
+
+    windTable <- matrix(nrow=length(S)-1,ncol=2)
+    windTable[,1] <- S[-length(S)]
+    windTable[,2] <- S[-1]
+    return(windTable)
+}
+#########
+
 
 
 ##sum of logarithm on rows and cols of a matrix
@@ -975,8 +1024,33 @@ pGenoData <- function(f,winL,gl,nInd=1,findSNP=1:sum(winL),h=0){
     return( X )    
 }
 
+pGenoDataAll <- function(f,gl,nInd=1,h=0){   
+    y = ncol(gl)-1
+    Lf = length(f)
+    nInd = dim(gl)[1] / Lf
+    
+    matrix( rep(  dbinom(0:y,y,f,log=TRUE), nInd ), nrow=nInd, byrow=T )
 
-freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci)){   
+    X <- c()
+    for(l in 1:length(f)){
+
+        freq <- f[l]
+        idx <- ((l-1)*nInd+1):(l*nInd)
+        p <- dbinom(0:y,y,freq,log=TRUE)
+        p[is.infinite(p)]=-1000
+        glSum <- gl[idx,] + matrix( rep(  dbinom(0:y,y,freq,log=TRUE), nInd ), nrow=nInd, byrow=T )
+        X[l] <- sum( rowSumsLog( glSum ) ) 
+        
+    }
+    return( X )    
+}
+
+#cppFunction('NumericVector pGenoDataAllCpp(NumericVectorfr, NumericMatrix gl, int nInd, double h){
+#
+#}'
+#)
+
+freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci)){#useless?   
     L <- length(major)    
     S <- seq(loci[1],loci[length(loci)],ws)
     S <- c(S, loci[length(loci)] )
@@ -993,8 +1067,6 @@ freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci))
             }
         if(length(idx)==0)
             return(c())
-        #if(length(idx)==0)
-        #    return(NA)
         num <- minor[findSNP[idx]]
         den <- num + major[findSNP[idx]]
         return( c(mean(num/den, na.rm=TRUE), outL) )
@@ -1005,7 +1077,7 @@ freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci))
 
 
 
-pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time
+pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time #useless?
     y = ncol(gl)-1
     Lf = dim(gl)[1]
     fVector=rep(f,Lf)
@@ -1057,7 +1129,7 @@ Viterbi <- function(hmm){
         nu[i, ] <- apply(matrixnu + logPi, 2, max) + log(hmm$dens[i,])
     }
     if (any(nu[n, ] == -Inf)) 
-        stop("Problems With Underflow")
+        nu[is.infinite(nu)] = -700
     y[n] <- which.max(nu[n, ])
     for (i in seq(n - 1, 1, -1)) y[i] <- which.max(logPi[, y[i + 1]] + nu[i, ])
     return(list(y=y,nu=nu))
@@ -1069,12 +1141,7 @@ wind <- as.numeric(wind) #window size
 minInd <- as.numeric(minInd)
 maxPloidy <- as.numeric(maxPloidy)
 truePl <- eval(parse(text=truePl))
-#nInd=as.numeric(nInd) #number of individuals
-#GLsingle #genolikes on ploidies (all and single individual)
-#DPsingle #depths (all and single individual)
-#hmmRes #resulting list containing results from files
-#V;
-#whichInd <- chosenInd[1] #I will make a loop over this afterwards
+
 
 #################################################
 ### Begin file-by-file analysis #################
@@ -1085,7 +1152,6 @@ for(i in 1:length(fileVector)){ #loop over input files
     cat("==> Analyze ", filez[i], "\n",sep="")
     ##read in the data from .mafs and .genolikes files
     GL <- fread(input=fileVector[i],sep="\t",showProgress=TRUE,header=FALSE,data.table=FALSE)
-    #FREQFILE <- fread(input=angsdVector[i],sep="\t",showProgress=TRUE,header=TRUE,data.table=FALSE)
     rowsGL <- dim(GL)[1]
     nInd <- length( unique( GL[,3] ) )
     sites <- unique( GL[ ,2] )    
@@ -1112,11 +1178,6 @@ for(i in 1:length(fileVector)){ #loop over input files
     pdf(outPdf[i])
 
     for(whichInd in chosenInd){ #loop over individuals
-        
-        #if(directInputPar==FALSE){
-        #    alpha=as.vector(as.numeric(params[[i]][2*whichInd - 1, 1:maxPloidy ]))
-        #    beta=as.vector(as.numeric(params[[i]][2*whichInd, 1:maxPloidy]))
-        #}
     
     ##select single individual depth and genolikes
         idxSingle <- seq(whichInd,rowsGL,nInd)
@@ -1138,8 +1199,8 @@ for(i in 1:length(fileVector)){ #loop over input files
         DPfiltered <- DP[idxTot] #......""
 
         
-        ##find SNPs with thresholds .1<f<.9
-        findSNP <- which(freqsIndiv>.1 & freqsIndiv<.9)
+        ##find SNPs with thresholds .1<f<.9 and data in the individual
+        findSNP <- which( freqsIndiv>.1 & freqsIndiv<.9 )
         freqsSNP <- freqsIndiv[findSNP]
         sitesSNP <- sitesIndiv[findSNP]
         totSNP <- as.vector( sapply(findSNP, function(j) ((j-1)*nInd+1):(j*nInd) ) )
@@ -1147,42 +1208,29 @@ for(i in 1:length(fileVector)){ #loop over input files
 
         
                                         #frequencies over windows
-        #print(majorSingle)
-        #print(minorSingle)
-        winAnalysis <- freqsSingle( majorSingle, minorSingle, ws=wind, sitesIndiv, sitesSNP, findSNP)
-        winFreq <- winAnalysis$winF
-        winLth <- winAnalysis$winL
-        #print(winFreq)
-        #print( length(majorSingle) )
-        #print(length(sitesIndiv))
-        #print(length(findSNP))
-        print( winLth )
-        print( winFreq )
-                                        #geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
-        geno2 <- matrix(0, nrow=maxPloidy, ncol=sum(winLth))
+        #winAnalysis <- freqsSingle( majorSingle, minorSingle, ws=wind, sitesIndiv, sitesSNP, findSNP)
+        #winFreq <- winAnalysis$winF
+        #winLth <- winAnalysis$winL
+        
+                                        #geno2 <- matrix(0, nrow=maxPloidy, ncol=sum(winLth))
+        windTable <- windowsBuilder(wind, sitesIndiv, sitesSNP)
+        
+        geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
         for(pp in 1:maxPloidy) #change ploidy
-            #geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
-            geno2[pp,] <- pGenoData( f=winFreq, winL=winLth, gl=readGL( 1:sum(winLth), pp, nInd=1, GLsingle ), findSNP=findSNP, nInd=1 )
+            geno2[pp,] <- pGenoDataAll( f=freqsSNP, gl=readGL( findSNP, pp, nInd=1, GLsingle ), nInd=1 ) #to make in Cpp
+        #print(geno2)
+        #for(pp in 1:maxPloidy) #change ploidy
+            #geno2[pp,] <- pGenoData( f=winFreq, winL=winLth, gl=readGL( 1:sum(winLth), pp, nInd=1, GLsingle ), findSNP=findSNP, nInd=1 )
+
         ##...and per window
-        print(dim(geno2))
-        geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP,findSNP) )
-        print(geno)
-        ##THIS CALCULATION IS NEEDED ONLY THE FIRST TIME (fileCounter==1).    
-        ##probability of data given genotype, ploidy and frequencies (per SNP)...
-        #if(fileCounter==1){
-        #    geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
-        #    for(pp in 1:maxPloidy) #change ploidy
-        #        geno2[pp,] <- pGenoData( f=freqsSNP, gl=readGL( findSNP, pp, nInd=nInd, GLfiltered ), nInd=nInd )
-            ##...and per window
-        #    geno <- apply( geno2, 1, function(x) sumGeno(x,wind,sitesIndiv,sitesSNP) )
-        #}
-        ##mean depth over each locus in a window (not only on SNPs)
-        ##use sumGeno(DPsingle,wind,sitesIndiv,sitesSNP,avg=TRUE)
-        ##to apply only the average on SNPs (very noisy result)
-        DPmean <- sumGeno( DPsingle, wind, sitesIndiv, sitesIndiv, 1:length(sitesIndiv), avg=TRUE )
+        #print(dim(geno2))
+        geno <- apply( geno2, 1, function(x) sumGeno(x,windTable,sitesSNP) ) #windowize DONE
+        
+        DPmean <- meanGeno( DPsingle, windTable, sitesIndiv) #windowize DONE
+        print(DPmean)
         ##clean from NA, NaN or infinite values
         keepSites <- apply( geno, 1, function(x) sum(is.na(x) | is.nan(x) | is.infinite(x))==0 )
-        print(which(keepSites))
+        #print(which(keepSites))
         DPmean <- DPmean[which(keepSites)]
         geno <- geno[which(keepSites), ]
         #keepSites <- which( !is.na(DPmean) & !is.nan(DPmean) & !is.infinite(DPmean) )
@@ -1237,12 +1285,13 @@ for(i in 1:length(fileVector)){ #loop over input files
         cat(hmmRes$beta,"\n",file=outTxt[i],sep="\t",append=TRUE)
         cat(max(hmmRes$logl[hmmRes$logl<0]),"\n",file=outTxt[i],sep="\t",append=TRUE)
         cat(hmmRes$states,"\n",file=outTxt[i],sep="\t",append=TRUE)
-        cat(hmmRes$postprob,"\n\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE)
-        
+        cat(hmmRes$postprob,"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE)
+        cat(sum( (V$y - truePl)!=0 )/length(V$y)  ,"\n",file=paste(outTxt[i],"Error",sep=""),sep="",append=TRUE)
         
     ##plot ploidy inference    
         stringPlot <- sprintf("\tInferred ploidies from %s\nindividual %d", BASENAMEFILE[i], whichInd)
-        hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot)
+        print(V$y)
+        hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot) #add loci from windows
     
     ##print on screen    
         cat(sprintf("\tInferred ploidies from %s individual %d\n", BASENAMEFILE[i], whichInd))
