@@ -23,7 +23,7 @@ class Reads:
 
 alleles = ['A','C','G','T']
 
-ploidy = [1,2,3,4,5,6,7,8]
+ploidy = [1,2,3,4,5,6]
 
 
 
@@ -35,6 +35,7 @@ parser.add_argument("-d","--downsampling",help="Fraction of data to be used in t
 parser.add_argument("-m","--min_non_major_freq",type=float,help="Set the minimum frequency of non major alleles for bases to be included in the calculations",default=0.2)
 parser.add_argument("-q","--min_quality_score",type=int,help="Set the minimum quality score of a read to be included in the calculation",default=1)
 parser.add_argument("-dp","--min_global_depth",type=float,help="Set the minimum global depth of a base to be included in calculations",default=0)
+parser.add_argument("-dpInd","--min_ind_depth",type=float,help="Set the minimum individual depth of a base to be included in calculations",default=0)
 parser.add_argument("-M2","--max_minor2_freq",type=float,help="Set the maximum frequency of third most prolific alleles for bases to be included in the calculations",default=0.1)
 parser.add_argument("-M3","--max_minor3_freq",type=float,help="Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations",default=0.1)
 args = parser.parse_args()
@@ -116,9 +117,11 @@ for g1 in list_of_inputs: #output files names
             myReads = Reads("","")
 
             # pooled reads for first level filtering (global depth) and estimation of minor/major alleles and allele frequencies
+            individualDepth = np.zeros(NSAMS,float)
             for n in range(NSAMS):
                 n=n+1
                 subReads= Reads(l[(n-1)*3+4],l[(n-1)*3+5])
+                individualDepth[n-1] = len(subReads.base)
                 myReads.base=str(myReads.base+subReads.base)
                 myReads.base_quality=str(myReads.base_quality+subReads.base_quality)
 
@@ -148,7 +151,7 @@ for g1 in list_of_inputs: #output files names
 
 
             globalDepth = len(myReads.base)
-            if globalDepth > args.min_global_depth:     
+            if ((globalDepth > args.min_global_depth) & (min(individualDepth)>args.min_ind_depth)):
                 total_bases+=globalDepth
                 no_bases+=1
                 #counts of non-major bases
@@ -194,14 +197,14 @@ for g1 in list_of_inputs: #output files names
                             myReads = Reads(bases, myReads.base_quality)
 
                             #establish prior probabilities
-                            HWE_Prob_hap = [P,Q]
-                            HWE_Prob_dip = [(1-F[n-1])*(P**2)+F[n-1]*P,(1-F[n-1])*2*P*Q,(1-F[n-1])*(Q**2)+F[n-1]*Q]
-                            HWE_Prob_tri = [(1-F[n-1])*(P**3)+F[n-1]*P,(1-F[n-1])*3*(P**2)*Q,(1-F[n-1])*3*P*(Q**2),(1-F[n-1])*(Q**3)+F[n-1]*Q]
-                            HWE_Prob_tetra = [(1-F[n-1])*(P**4)+F[n-1]*P,(1-F[n-1])*4*(P**3)*Q,(1-F[n-1])*6*(P**2)*(Q**2),(1-F[n-1])*4*P*(Q**3),(1-F[n-1])*(Q**4)+F[n-1]*Q]
-                            HWE_Prob_pent = [(1-F[n-1])*(P**5)+F[n-1]*P,(1-F[n-1])*5*(P**4)*Q,(1-F[n-1])*10*(P**3)*(Q**2),(1-F[n-1])*10*(P**2)*(Q**3),(1-F[n-1])*5*P*(Q**4),(1-F[n-1])*(Q**5)+F[n-1]*Q]
-                            HWE_Prob_hex = [(1-F[n-1])*(P**6)+F[n-1]*P,(1-F[n-1])*6*(P**5)*Q,(1-F[n-1])*15*(P**4)*(Q**2),(1-F[n-1])*20*(P**3)*(Q**3),(1-F[n-1])*15*(P**2)*(Q**4),(1-F[n-1])*6*P*(Q**5),(1-F[n-1])*(Q**6)+F[n-1]*Q]
-                            HWE_Prob_hept = [(1-F[n-1])*(P**7)+F[n-1]*P,(1-F[n-1])*7*(P**6)*Q,(1-F[n-1])*21*(P**5)*(Q**2),(1-F[n-1])*35*(P**4)*(Q**3),(1-F[n-1])*35*(P**3)*(Q**4),(1-F[n-1])*21*(P**2)*(Q**5),(1-F[n-1])*7*P*(Q**6),(1-F[n-1])*(Q**7)+F[n-1]*Q]
-                            HWE_Prob_oct = [(1-F[n-1])*(P**8)+F[n-1]*P,(1-F[n-1])*8*(P**7)*Q,(1-F[n-1])*28*(P**6)*(Q**2),(1-F[n-1])*56*(P**5)*(Q**3),(1-F[n-1])*70*(P**4)*(Q**4),(1-F[n-1])*56*(P**3)*(Q**5),(1-F[n-1])*28*(P**2)*(Q**6),(1-F[n-1])*8*P*(Q**7),(1-F[n-1])*(Q**8)+F[n-1]*Q]
+                            #HWE_Prob_hap = [P,Q]
+                            #HWE_Prob_dip = [(1-F[n-1])*(P**2)+F[n-1]*P,(1-F[n-1])*2*P*Q,(1-F[n-1])*(Q**2)+F[n-1]*Q]
+                            #HWE_Prob_tri = [(1-F[n-1])*(P**3)+F[n-1]*P,(1-F[n-1])*3*(P**2)*Q,(1-F[n-1])*3*P*(Q**2),(1-F[n-1])*(Q**3)+F[n-1]*Q]
+                            #HWE_Prob_tetra = [(1-F[n-1])*(P**4)+F[n-1]*P,(1-F[n-1])*4*(P**3)*Q,(1-F[n-1])*6*(P**2)*(Q**2),(1-F[n-1])*4*P*(Q**3),(1-F[n-1])*(Q**4)+F[n-1]*Q]
+                            #HWE_Prob_pent = [(1-F[n-1])*(P**5)+F[n-1]*P,(1-F[n-1])*5*(P**4)*Q,(1-F[n-1])*10*(P**3)*(Q**2),(1-F[n-1])*10*(P**2)*(Q**3),(1-F[n-1])*5*P*(Q**4),(1-F[n-1])*(Q**5)+F[n-1]*Q]
+                            #HWE_Prob_hex = [(1-F[n-1])*(P**6)+F[n-1]*P,(1-F[n-1])*6*(P**5)*Q,(1-F[n-1])*15*(P**4)*(Q**2),(1-F[n-1])*20*(P**3)*(Q**3),(1-F[n-1])*15*(P**2)*(Q**4),(1-F[n-1])*6*P*(Q**5),(1-F[n-1])*(Q**6)+F[n-1]*Q]
+                            #HWE_Prob_hept = [(1-F[n-1])*(P**7)+F[n-1]*P,(1-F[n-1])*7*(P**6)*Q,(1-F[n-1])*21*(P**5)*(Q**2),(1-F[n-1])*35*(P**4)*(Q**3),(1-F[n-1])*35*(P**3)*(Q**4),(1-F[n-1])*21*(P**2)*(Q**5),(1-F[n-1])*7*P*(Q**6),(1-F[n-1])*(Q**7)+F[n-1]*Q]
+                            #HWE_Prob_oct = [(1-F[n-1])*(P**8)+F[n-1]*P,(1-F[n-1])*8*(P**7)*Q,(1-F[n-1])*28*(P**6)*(Q**2),(1-F[n-1])*56*(P**5)*(Q**3),(1-F[n-1])*70*(P**4)*(Q**4),(1-F[n-1])*56*(P**3)*(Q**5),(1-F[n-1])*28*(P**2)*(Q**6),(1-F[n-1])*8*P*(Q**7),(1-F[n-1])*(Q**8)+F[n-1]*Q]
 
                             #filter by quality
                             [bases,qualities] = generics.filter(myReads,args.min_quality_score)
@@ -223,73 +226,72 @@ for g1 in list_of_inputs: #output files names
                             major_count=generics.calcAlleleFreq(major,myReads)
                             minor_count=generics.calcAlleleFreq(minor,myReads)
                             # Take a sample of the bases so that the proportion of data used is as required
-                            data_prop = math.ceil(len(myReads.base)*downsampling) # calculate how many bases to include for proportion of sample
-                            rand_samp = random.sample(range(0,len(myReads.base)),data_prop)
-                            base = ""
-                            qualities = ""
-                            for r in rand_samp:
-                                base+=myReads.base[r]
-                                qualities+=myReads.base_quality[r]
-                            myReads=Reads(base,qualities)
+                            if downsampling<1:
+                                data_prop = math.ceil(len(myReads.base)*downsampling) # calculate how many bases to include for proportion of sample
+                                rand_samp = random.sample(range(0,len(myReads.base)),data_prop)
+                                base = ""
+                                qualities = ""
+                                for r in rand_samp:
+                                    base+=myReads.base[r]
+                                    qualities+=myReads.base_quality[r]
+                                myReads=Reads(base,qualities)
                             #find sample depth of filtered data    
                             sampleDepth = len(myReads.base)
                             p=[] # list to fill with probabilities for this base
 
-
-
                             if 1 in ploidy:
                                 haploid = generics.calcGenoLogLike1_MajorMinor(myReads,mySite,major,minor)
-                                haploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,haploid,HWE_Prob_hap)))
-                                p.append(haploid_sum)
+                                #haploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,haploid,HWE_Prob_hap)))
+                                #p.append(haploid_sum)
 
                             if 2 in ploidy:
                                 diploid = generics.calcGenoLogLike2_MajorMinor(myReads,mySite,major,minor)
-                                diploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,diploid,HWE_Prob_dip)))
-                                p.append(diploid_sum)
+                                #diploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,diploid,HWE_Prob_dip)))
+                                #p.append(diploid_sum)
 
                             if 3 in ploidy:
                                 triploid = generics.calcGenoLogLike3_MajorMinor(myReads,mySite,major,minor)
-                                triploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,triploid,HWE_Prob_tri)))
-                                p.append(triploid_sum)
+                                #triploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,triploid,HWE_Prob_tri)))
+                                #p.append(triploid_sum)
 
                             if 4 in ploidy:
                                 tetraploid = generics.calcGenoLogLike4_MajorMinor(myReads,mySite,major,minor)
-                                tetraploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,tetraploid,HWE_Prob_tetra)))
-                                p.append(tetraploid_sum)
+                                #tetraploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,tetraploid,HWE_Prob_tetra)))
+                                #p.append(tetraploid_sum)
 
                             if 5 in ploidy:
                                 pentaploid = generics.calcGenoLogLike5_MajorMinor(myReads,mySite,major,minor)
-                                pentaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,pentaploid,HWE_Prob_pent)))
-                                p.append(pentaploid_sum)
+                                #pentaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,pentaploid,HWE_Prob_pent)))
+                                #p.append(pentaploid_sum)
 
                             if 6 in ploidy:
                                 hexaploid = generics.calcGenoLogLike6_MajorMinor(myReads,mySite,major,minor)
-                                hexaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,hexaploid,HWE_Prob_hex)))
-                                p.append(hexaploid_sum)
+                                #hexaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,hexaploid,HWE_Prob_hex)))
+                                #p.append(hexaploid_sum)
 
-                            if 7 in ploidy:
-                                heptaploid = generics.calcGenoLogLike7_MajorMinor(myReads,mySite,major,minor)
-                                heptaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,heptaploid,HWE_Prob_hept)))
-                                p.append(heptaploid_sum)
+                            #if 7 in ploidy:
+                                #heptaploid = generics.calcGenoLogLike7_MajorMinor(myReads,mySite,major,minor)
+                                #heptaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,heptaploid,HWE_Prob_hept)))
+                                #p.append(heptaploid_sum)
 
-                            if 8 in ploidy:
-                                octaploid = generics.calcGenoLogLike8_MajorMinor(myReads,mySite,major,minor)
-                                octaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,octaploid,HWE_Prob_oct)))
-                                p.append(octaploid_sum)
+                            #if 8 in ploidy:
+                                #octaploid = generics.calcGenoLogLike8_MajorMinor(myReads,mySite,major,minor)
+                                #octaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,octaploid,HWE_Prob_oct)))
+                                #p.append(octaploid_sum)
 
 
 
-                            Overall_Prob_HWE[0]+=p # Add probabilities to overall counter
+                            #Overall_Prob_HWE[0]+=p # Add probabilities to overall counter
                             NUMSITES[0]+=sampleDepth # count the number of reads for each sample
 
-                            Overall_Prob_HWE[n]+=p # Add probabilities and depths to sample-wise counter
+                            #Overall_Prob_HWE[n]+=p # Add probabilities and depths to sample-wise counter
                             NUMSITES[n]+=sampleDepth 
 
 
 
                             # Write file of genotype likelihoods
                             sep="\t"
-                            content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,haploid)),"\t".join(map(str,diploid)),"\t".join(map(str,triploid)),"\t".join(map(str,tetraploid)),"\t".join(map(str,pentaploid)),"\t".join(map(str,hexaploid)),"\t".join(map(str,heptaploid)),"\t".join(map(str,octaploid)))
+                            content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,haploid)),"\t".join(map(str,diploid)),"\t".join(map(str,triploid)),"\t".join(map(str,tetraploid)),"\t".join(map(str,pentaploid)),"\t".join(map(str,hexaploid)))
                             content=sep.join(content)
                             content=content+"\n"
                             with gzip.open(output,'at+') as f: 
