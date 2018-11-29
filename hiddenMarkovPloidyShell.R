@@ -46,7 +46,8 @@ print.args<-function(args,des){
 ## choose your parameters and defaults
 ## NULL is an non-optional argument, NA is an optional argument with no default, others are the default arguments
 args<-list(file = NA, #single basename of file to analize (does not need the list 'filelist' for multiple files)
-           fileList = NA, #list of basenames for GUNZIPPED .genolike, .mafs and .par files
+           fileList = NA, #list of basenames for GUNZIPPED .genolike files
+           #bedFile = NA, #bed file to choose chromosomes and sites
            wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
            maxPloidy = 6, #maximum ploidy. Must change with choice of potential ploidies (e.g. haploid might be excluded a priori by users)
            minInd = 1, #min ind having reads 
@@ -899,7 +900,7 @@ logRescale <- function(v){
 
 ##sum of values in a windows. When lociSNP=loci all values in the windows are used.
 ##avg=TRUE performs average instead of sum. ws=window size and dp=vector of data.
-sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){   
+sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){  #useless?
     L <- length(dp)    
     S <- seq(loci[1],loci[length(loci)],ws)
     S <- c(S, loci[length(loci)] )
@@ -919,7 +920,7 @@ sumGeno <- function(dp,ws,loci,lociSNP=loci,findSNP=1:length(loci),avg=FALSE){
     return(unlist(res))
 }
 
-sumGenoAll <- function(dp,ws=1,loci,lociSNP=loci,avg=FALSE){   
+sumGenoAll <- function(dp,ws=1,loci,lociSNP=loci,avg=FALSE){  #useless?
     L <- length(dp)    
     S <- c( seq(loci[1],loci[length(loci)-1],ws), loci[length(loci)] )
     res <- sapply(1:(length(S)-1), function(ll){
@@ -1004,7 +1005,7 @@ colSumsLog <- function(X){
    
 
 ##Likelihood of f=data vector given genotype. gl=genotype likelihoods vector. h=inbreeding coefficient.
-pGenoData <- function(f,winL,gl,nInd=1,findSNP=1:sum(winL),h=0){   
+pGenoData <- function(f,winL,gl,nInd=1,findSNP=1:sum(winL),h=0){   #useless?
     y = ncol(gl)-1
     Lf = sum(winL)
     winIdx=cumsum(c(0,winL))
@@ -1024,31 +1025,37 @@ pGenoData <- function(f,winL,gl,nInd=1,findSNP=1:sum(winL),h=0){
     return( X )    
 }
 
-pGenoDataAll <- function(f,gl,nInd=1,h=0){   
-    y = ncol(gl)-1
-    Lf = length(f)
-    nInd = dim(gl)[1] / Lf
+cppFunction('NumericVector pGenoDataAll(NumericVector f, NumericMatrix gl){
+    int y = gl.ncol()-1;
+    int Lf = f.size();
     
-    matrix( rep(  dbinom(0:y,y,f,log=TRUE), nInd ), nrow=nInd, byrow=T )
+    NumericVector res(Lf);
 
-    X <- c()
-    for(l in 1:length(f)){
+    for(int l=0; l<Lf; l++){
 
-        freq <- f[l]
-        idx <- ((l-1)*nInd+1):(l*nInd)
-        p <- dbinom(0:y,y,freq,log=TRUE)
-        p[is.infinite(p)]=-1000
-        glSum <- gl[idx,] + matrix( rep(  dbinom(0:y,y,freq,log=TRUE), nInd ), nrow=nInd, byrow=T )
-        X[l] <- sum( rowSumsLog( glSum ) ) 
+        NumericVector p = dbinom( seq(0,y), y, f[l], true );
+        NumericVector gg = gl(l,_);
+        LogicalVector infIdx = is_infinite(p);
         
-    }
-    return( X )    
-}
+        for(int k=0; k<=y; k++)
+            if(infIdx[k])
+               p[k] = -1000;
 
-#cppFunction('NumericVector pGenoDataAllCpp(NumericVectorfr, NumericMatrix gl, int nInd, double h){
-#
-#}'
-#)
+        NumericVector X = gg + p;
+
+        //logarithmic sum
+        double m = max(X);
+        X.erase(which_max(X));
+
+        NumericVector diffVec = X - m;     
+        diffVec = clamp(-700, diffVec, -0.0001);     
+        res(l) = m + log( 1 + sum( exp( diffVec ) ) );      
+    }
+
+    return(res);
+}'
+)
+
 
 freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci)){#useless?   
     L <- length(major)    
@@ -1075,8 +1082,6 @@ freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci))
 }
 
 
-
-
 pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time #useless?
     y = ncol(gl)-1
     Lf = dim(gl)[1]
@@ -1087,14 +1092,12 @@ pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time #useless?
     
     X <- c()
     for(l in 1:Lf){
-
         freq <- f[l]
         idx <- ((l-1)*nInd+1):(l*nInd)
         p <- dbinom(0:y,y,freq,log=TRUE)
         p[is.infinite(p)]=-1000
         glSum <- gl[idx,] + matrix( rep(  dbinom(0:y,y,freq,log=TRUE), nInd ), nrow=nInd, byrow=T )
-        X[l] <- sum( rowSumsLog( glSum ) ) 
-        
+        X[l] <- sum( rowSumsLog( glSum ) )        
     }
     #find sites hvor f passer bedst - ordering?
     return( X )    
@@ -1212,22 +1215,20 @@ for(i in 1:length(fileVector)){ #loop over input files
         #winFreq <- winAnalysis$winF
         #winLth <- winAnalysis$winL
         
-                                        #geno2 <- matrix(0, nrow=maxPloidy, ncol=sum(winLth))
+        #geno2 <- matrix(0, nrow=maxPloidy, ncol=sum(winLth))
         windTable <- windowsBuilder(wind, sitesIndiv, sitesSNP)
         
         geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
-        for(pp in 1:maxPloidy) #change ploidy
-            geno2[pp,] <- pGenoDataAll( f=freqsSNP, gl=readGL( findSNP, pp, nInd=1, GLsingle ), nInd=1 ) #to make in Cpp
-        #print(geno2)
-        #for(pp in 1:maxPloidy) #change ploidy
-            #geno2[pp,] <- pGenoData( f=winFreq, winL=winLth, gl=readGL( 1:sum(winLth), pp, nInd=1, GLsingle ), findSNP=findSNP, nInd=1 )
-
+        for(pp in 1:maxPloidy)
+            geno2[pp,] = pGenoDataAll( f=freqsSNP, gl=as.matrix(readGL( findSNP, pp, nInd=1, GLsingle )) )
+        
+        
         ##...and per window
         #print(dim(geno2))
         geno <- apply( geno2, 1, function(x) sumGeno(x,windTable,sitesSNP) ) #windowize DONE
+        print(geno)
         
         DPmean <- meanGeno( DPsingle, windTable, sitesIndiv) #windowize DONE
-        print(DPmean)
         ##clean from NA, NaN or infinite values
         keepSites <- apply( geno, 1, function(x) sum(is.na(x) | is.nan(x) | is.infinite(x))==0 )
         #print(which(keepSites))
@@ -1302,3 +1303,4 @@ for(i in 1:length(fileVector)){ #loop over input files
     ##close pdf plot connection
     dev.off()
 }
+
