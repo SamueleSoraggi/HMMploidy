@@ -152,7 +152,7 @@ cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " c
 hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies", propStates){
     options(warn=-1)
     loci = hmm$lociSNP
-    borderVal <- round( seq(min(loci),max(loci),length.out=min(20,length(V$y)) ) )
+    borderVal <- round( seq(min(loci),max(loci),length.out=length(V$y) ) )
     xlabels=c()
     if(max(loci)>=1e+6){
         XLAB="Position (Mb)"
