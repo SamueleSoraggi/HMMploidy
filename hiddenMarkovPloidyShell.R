@@ -207,7 +207,7 @@ hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies", propStates)
 
     ##PLOT DEPTH
     plot(hmm$count[,1], type="p", lwd=2, col="deepskyblue1", xlab=XLAB, main="Window Mean Depth", xaxt="n", ylab="Window Mean Depth", bg=3, ylim=c(min(hmm$count[,1])-.1*min(hmm$count[,1]),max(hmm$count[,1])+.2*max(hmm$count[,1])), cex.lab=1.2, cex.main=1.3)
-    axis( side=1, at=seq(1,length(V$y),length.out=min(20,length(V$y))), labels=xlabels, las=2, cex=1 )
+    axis( side=1, at=seq(1,length(V$y),length.out=length(V$y)), labels=xlabels, las=2, cex=1 )
     abline(h=hmm$mu, col="coral")
     legend(x=1, y = max(hmm$count[,1])+.25*max(hmm$count[,1]), legend=c("Mean Depth", "Distribution Mean"), col = c("deepskyblue1","coral"), lwd = rep(3,3), lty=c(NA,1), pch = c(20,NA), bty = "n", ncol = 2, cex=1.4)
 options(warn=0)
