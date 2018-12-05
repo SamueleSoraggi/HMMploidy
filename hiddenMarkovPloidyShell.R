@@ -149,7 +149,7 @@ cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " c
 ############################
 
 
-hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies"){
+hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies", propStates){
     options(warn=-1)
     loci = hmm$lociSNP
     borderVal <- round( seq(min(loci),max(loci),length.out=min(20,length(V$y)) ) )
@@ -164,6 +164,7 @@ hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies"){
         for(i in 1:(length(borderVal)))
             xlabels[i] <- sprintf("%.1f", borderVal[i]/(1e+3))
     }
+
     
     layout(matrix(c(1,1,1,1,2,2), nrow = 3, ncol = 2, byrow = TRUE))
 
@@ -171,14 +172,14 @@ hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies"){
     if(is.na(truePl))
         truePl <- V$y
 
-    plot( V$y, pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", bty="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.75, cex.main=1.4, cex.lab=1.2)
+    plot( c(V$y), pch=15, lwd=.75, col="navyblue", main=main, xaxt="n", yaxt="n", bty="n", ylab="Ploidy", xlab=XLAB, ylim=c(min(V$y,truePl)-.5, max(V$y,truePl)+1 ), cex=.75, cex.main=1.4, cex.lab=1.2)
     
     if(!is.na(oldTruePl))
-        points(truePl-.075 , pch=15, lwd=.75, col="coral", cex=.75)
+        points( c(truePl)-.075 , pch=15, lwd=.75, col="coral", cex=.75)
    
     abline( h=seq( min(V$y,truePl), max(V$y,truePl) ), col="gray" )
 
-    axis( side=1, at=seq(1,length(V$y),length.out=min(20,length(V$y))), labels=xlabels, las=2, cex=1 )
+    axis( side=1, at=seq(1,length(V$y),length.out=length(V$y)), labels=xlabels, las=2, cex=1 )
     axis( side=2, at=seq(min(V$y), max(V$y)) )
 
     postProb <- hmm$postprob
@@ -188,7 +189,8 @@ hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies"){
         lines( x=c(length(V$y)+.4,length(V$y)+.4), y=c(yValue+.025,yValue+0.525), col="deepskyblue1" )
         text(labels="0", x=length(V$y)+.4, y=yValue-.1)
         text(labels="1", x=length(V$y)+.4, y=yValue+.6)
-        mtext(text=rep("Posterior",length(yValue)), side=4,at=yValue+.25,cex=.7)
+        mtext(text=rep("Posterior",length(yValue)), side=4, at=yValue+.25, cex=.6)
+        lines( x=rep(length(V$y)+1,2), y=c(yValue+.025,yValue+propStates[counter]/2), col="deepskyblue1", lwd=6 )
         counter=counter+1
     }
     
@@ -1160,7 +1162,6 @@ for(i in 1:length(fileVector)){ #loop over input files
     sites <- unique( GL[ ,2] )    
     DP <- GL[ ,5]
 
-
     #calculate allele frequencies
     majorReads <- GL[,8]
     minorReads <- GL[,9]
@@ -1207,15 +1208,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         freqsSNP <- freqsIndiv[findSNP]
         sitesSNP <- sitesIndiv[findSNP]
         totSNP <- as.vector( sapply(findSNP, function(j) ((j-1)*nInd+1):(j*nInd) ) )
-        ##DPSNP = DPsingle[totSNP] I think it is not needed
 
-        
-                                        #frequencies over windows
-        #winAnalysis <- freqsSingle( majorSingle, minorSingle, ws=wind, sitesIndiv, sitesSNP, findSNP)
-        #winFreq <- winAnalysis$winF
-        #winLth <- winAnalysis$winL
-        
-        #geno2 <- matrix(0, nrow=maxPloidy, ncol=sum(winLth))
         windTable <- windowsBuilder(wind, sitesIndiv, sitesSNP)
         
         geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
@@ -1224,11 +1217,9 @@ for(i in 1:length(fileVector)){ #loop over input files
         
         
         ##...and per window
-        #print(dim(geno2))
-        geno <- apply( geno2, 1, function(x) sumGeno(x,windTable,sitesSNP) ) #windowize DONE
-        print(geno)
+        geno <- apply( geno2, 1, function(x) sumGeno(x,windTable,sitesSNP) )
         
-        DPmean <- meanGeno( DPsingle, windTable, sitesIndiv) #windowize DONE
+        DPmean <- meanGeno( DPsingle, windTable, sitesIndiv)
         ##clean from NA, NaN or infinite values
         keepSites <- apply( geno, 1, function(x) sum(is.na(x) | is.nan(x) | is.infinite(x))==0 )
         #print(which(keepSites))
@@ -1243,10 +1234,10 @@ for(i in 1:length(fileVector)){ #loop over input files
         genoResc[genoResc>-.00001]=-.00001
         ##some initial parameters
         delta=rep(1/maxPloidy,maxPloidy) #i think it is ok without prior info
-        Pi0=matrix(1/maxPloidy,nrow=maxPloidy,ncol=maxPloidy) #tridiagonal makes more sense?
+        Pi0=matrix(1/maxPloidy,nrow=maxPloidy,ncol=maxPloidy)
         count <- matrix(DPmean,ncol=1)
         if(directInputPar==FALSE){
-            cat(sprintf("    Estimate parameters for %d states\n", maxPloidy))
+            cat(sprintf("    Initialize parameters for %d ploidy numbers\n", maxPloidy))
             alpha <- tail(quantile(count[count[,1]>0,1], probs=seq(0, 1, 1/maxPloidy), na.rm=TRUE), maxPloidy)
             beta <- rep(1, maxPloidy)	
             delta <- rep(0.5, maxPloidy)
@@ -1261,7 +1252,7 @@ for(i in 1:length(fileVector)){ #loop over input files
             Pi0 <- Pi0[myorder, myorder]		
         }
         
-        cat("    N.samples ",nInd," alpha0: ",alpha," beta0: ",beta,"\n",sep=" ")        
+        cat("     N.samples ",nInd,"\n    alpha0: ",alpha,"\n    beta0: ",beta,"\n",sep=" ")        
         ##start the HMM
         hmmRes <- nbHMM(count, alpha=alpha, beta=beta, TRANS=Pi0, delta=delta, genolike=genoResc, PLOIDYMAX=maxPloidy)
         hmmRes$'lociSNP' = sitesSNP; hmmRes$'geno' = geno;
@@ -1279,20 +1270,27 @@ for(i in 1:length(fileVector)){ #loop over input files
 
         ## TO DO
         ##return something in a file
-        cat("File: ",BASENAMEFILE[i]," individual  ",whichInd," out of ",nInd,"\n",sep="",file=outTxt[i],append=!(fileCounter==1))
-        cat(hmmRes$delta,"\n",file=outTxt[i],sep="\t",append=TRUE)
-        cat(hmmRes$TRANS,"\n",file=outTxt[i],sep="\t",append=TRUE)
-        cat(hmmRes$alpha,"\n",file=outTxt[i],sep="\t",append=TRUE)
-        cat(hmmRes$beta,"\n",file=outTxt[i],sep="\t",append=TRUE)
-        cat(max(hmmRes$logl[hmmRes$logl<0]),"\n",file=outTxt[i],sep="\t",append=TRUE)
-        cat(hmmRes$states,"\n",file=outTxt[i],sep="\t",append=TRUE)
-        cat(hmmRes$postprob,"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE)
-        cat(sum( (V$y - truePl)!=0 )/length(V$y)  ,"\n",file=paste(outTxt[i],"Error",sep=""),sep="",append=TRUE)
+        cat("File: ",BASENAMEFILE[i]," individual  ",whichInd," out of ",nInd,"\n",sep="",file=outTxt[i],append=!(fileCounter==1)) #info
+        cat(hmmRes$delta,"\n",file=outTxt[i],sep="\t",append=TRUE) #starting probabilities
+        cat(hmmRes$TRANS,"\n",file=outTxt[i],sep="\t",append=TRUE) #transition probabilities
+        cat(hmmRes$alpha,"\n",file=outTxt[i],sep="\t",append=TRUE) #alpha neg.bin. parameters
+        cat(hmmRes$beta,"\n",file=outTxt[i],sep="\t",append=TRUE) #beta neg.bin. parameters
+        cat(max(hmmRes$logl[hmmRes$logl<0]),"\n",file=outTxt[i],sep="\t",append=TRUE) #loglikelihood
+        cat(hmmRes$states,"\n",file=outTxt[i],sep="\t",append=TRUE) #inferred states
+        cat(hmmRes$postprob,"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE) #posterior probability matrix
+        propStates <- colSums(hmmRes$postprob)/sum(hmmRes$postprob)
+        cat(propStates,"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE) #posterior probability proportion of HMM states
+        cat(windTable[,1],"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE) #starting loci for windows
+        cat(windTable[,2],"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE) #ending loci for windows
+        cat(V$y,"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE) # inferred ploidy for the above defined window
+        #cat(sum( (V$y - truePl)!=0 )/length(V$y)  ,"\n",file=paste(outTxt[i],"Error",sep=""),sep="",append=TRUE) #error rate when comparing to simulations (only for article publication)
+
+        
         
     ##plot ploidy inference    
         stringPlot <- sprintf("\tInferred ploidies from %s\nindividual %d", BASENAMEFILE[i], whichInd)
-        print(V$y)
-        hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot) #add loci from windows
+        cat( "Inferred state sequence: ", V$y, "\n", sep=" ")
+        hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot, propStates=propStates) #add loci from windows
     
     ##print on screen    
         cat(sprintf("\tInferred ploidies from %s individual %d\n", BASENAMEFILE[i], whichInd))
