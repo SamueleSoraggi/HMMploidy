@@ -47,7 +47,7 @@ print.args<-function(args,des){
 ## NULL is an non-optional argument, NA is an optional argument with no default, others are the default arguments
 args<-list(file = NA, #single basename of file to analize (does not need the list 'filelist' for multiple files)
            fileList = NA, #list of basenames for GUNZIPPED .genolike files
-           #bedFile = NA, #bed file to choose chromosomes and sites
+           nameList = NA, #bed file to choose chromosomes and sites
            wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
            maxPloidy = 6, #maximum ploidy. Must change with choice of potential ploidies (e.g. haploid might be excluded a priori by users)
            minInd = 1, #min ind having reads 
@@ -62,8 +62,9 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
            )
 
 #if no argument aree given prints the need arguments and the optional ones with default
-des<-list(fileList="[string] list of .genolike and phat.mafs and eventual .windows files",
+des<-list(fileList="[string] list of .genolike files",
           wind="[integer] Size of window for depth and genotype likelihoods (NA)",
+          nameList = "[NA] List of names for the samples",
           minInd="[integer] min Nr of individuals per locus having data (1)",
           maxPloidy="[integer] Maximum ploidy allowed (6)", #have to implement case where ploidies are chosen
           chosenInd ="[integers] which Individual to consider. one at the time for now. (NA=all)",
@@ -106,21 +107,12 @@ for(i in 1:length(filez)){
     outTxt[i] <- paste(filez[i],".hiddenMarkovPloidy",sep="")
 }
 
-#read parameters from file if not provided as input directly
-#params <- list()
-directInputPar = FALSE
-#if(is.na(alpha) | is.na(beta)){
-#    for(i in 1:length(filez))
-#        params[[i]] <- read.table(paste(filez[i],".par",sep=""), header=FALSE, as.is=T)
-#}
-if(!(is.na(alpha) | is.na(beta))){
-    directInputPar = TRUE
-#    for(i in 1:length(filez))
-#        params[[i]] <- rbind(alpha,beta)
-}
 
-
-
+if(!is.na(nameList))
+    inputNames <- unlist( read.table(nameList, header=FALSE, as.is=T)  )
+if(is.na(nameList))
+    for(i in 1:length(filez))
+        inputNames[i] <- paste("ind_",i,sep="")
 ##numeric conversion of inputs
 wind <- as.numeric(wind)
 minInd <- as.numeric(minInd)
@@ -133,13 +125,7 @@ isNumericChosenInd <- all(!is.na(chosenInd)) #check for choice of individuals
 ##if chosenInd id NA it will be assigned as all individuals later
 if(isNumericChosenInd)
     chosenInd <- eval( parse( text=paste("c(",chosenInd,")",sep="") ) )
-if(!(is.na(alpha) | is.na(beta))){
-    alpha <- eval( parse( text=paste("c(",alpha,")",sep="") ) )
-    beta <- eval( parse( text=paste("c(",beta,")",sep="") ) )
-}
 
-#print(alpha)
-#print(beta)
 
 ##print Rscript input
 cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " chosenInd: ", chosenInd ," maxPloidy: ", maxPloidy, " alpha: ", alpha, " beta: ", beta, " quantileTrim: ", quantileTrim, " eps: ", eps,  "\n-----------\n" )
@@ -152,7 +138,7 @@ cat("----------\nfileList: ", fileList, " wind: ", wind," minInd: ", minInd, " c
 hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies", propStates){
     options(warn=-1)
     loci = hmm$lociSNP
-    borderVal <- round( seq(min(loci),max(loci),length.out=length(V$y) ) )
+    borderVal <- round( seq(min(loci), max(loci), length.out=min(30,length(V$y)) ) )
     xlabels=c()
     if(max(loci)>=1e+6){
         XLAB="Position (Mb)"
@@ -179,7 +165,7 @@ hmmPlotting <- function(hmm, V, truePl=NA, main="Inferred ploidies", propStates)
    
     abline( h=seq( min(V$y,truePl), max(V$y,truePl) ), col="gray" )
 
-    axis( side=1, at=seq(1,length(V$y),length.out=length(V$y)), labels=xlabels, las=2, cex=1 )
+    axis( side=1, at=seq(1,length(V$y),length.out=min(30,length(V$y))), labels=xlabels, las=2, cex=.8 )
     axis( side=2, at=seq(min(V$y), max(V$y)) )
 
     postProb <- hmm$postprob
@@ -1288,12 +1274,12 @@ for(i in 1:length(fileVector)){ #loop over input files
         
         
     ##plot ploidy inference    
-        stringPlot <- sprintf("\tInferred ploidies from %s\nindividual %d", BASENAMEFILE[i], whichInd)
+        stringPlot <- sprintf("\tInferred ploidies from %s\nSample: %d",BASENAMEFILE[i], inputNames[whichInd])
         cat( "Inferred state sequence: ", V$y, "\n", sep=" ")
         hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot, propStates=propStates) #add loci from windows
     
     ##print on screen    
-        cat(sprintf("\tInferred ploidies from %s individual %d\n", BASENAMEFILE[i], whichInd))
+        cat(sprintf("\tInferred ploidies from %s. Sample: %s\n", BASENAMEFILE[i], inputNames[whichInd]))
         cat("\t-----------------------------------------------------\n")
         fileCounter <- fileCounter + 1
     }
