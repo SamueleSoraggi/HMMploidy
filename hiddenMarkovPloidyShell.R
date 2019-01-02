@@ -1222,7 +1222,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         delta=rep(1/maxPloidy,maxPloidy) #i think it is ok without prior info
         Pi0=matrix(1/maxPloidy,nrow=maxPloidy,ncol=maxPloidy)
         count <- matrix(DPmean,ncol=1)
-        if(directInputPar==FALSE){
+
             cat(sprintf("    Initialize parameters for %d ploidy numbers\n", maxPloidy))
             alpha <- tail(quantile(count[count[,1]>0,1], probs=seq(0, 1, 1/maxPloidy), na.rm=TRUE), maxPloidy)
             beta <- rep(1, maxPloidy)	
@@ -1236,9 +1236,9 @@ for(i in 1:length(fileVector)){ #loop over input files
             alpha <- matrix(alpha[myorder],ncol=length(myorder))
             beta <- matrix(beta[myorder],ncol=length(myorder))
             Pi0 <- Pi0[myorder, myorder]		
-        }
         
-        cat("     N.samples ",nInd,"\n    alpha0: ",alpha,"\n    beta0: ",beta,"\n",sep=" ")        
+        
+        cat("    N.samples ",nInd,"\n    alpha0: ",alpha,"\n    beta0: ",beta,"\n",sep=" ")        
         ##start the HMM
         hmmRes <- nbHMM(count, alpha=alpha, beta=beta, TRANS=Pi0, delta=delta, genolike=genoResc, PLOIDYMAX=maxPloidy)
         hmmRes$'lociSNP' = sitesSNP; hmmRes$'geno' = geno;
@@ -1274,7 +1274,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         
         
     ##plot ploidy inference    
-        stringPlot <- sprintf("\tInferred ploidies from %s\nSample: %d",BASENAMEFILE[i], inputNames[whichInd])
+        stringPlot <- sprintf("\tInferred ploidies from %s\nSample: %s",BASENAMEFILE[i], inputNames[whichInd])
         cat( "Inferred state sequence: ", V$y, "\n", sep=" ")
         hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot, propStates=propStates) #add loci from windows
     
