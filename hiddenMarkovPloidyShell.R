@@ -107,12 +107,6 @@ for(i in 1:length(filez)){
     outTxt[i] <- paste(filez[i],".HMMploidy",sep="")
 }
 
-inputNames <- c()
-if(!is.na(nameList))
-    inputNames <- unlist( read.table(nameList, header=FALSE, as.is=T)  )
-if(is.na(nameList))
-    for(i in 1:length(filez))
-        inputNames[i] <- paste("ind_",i,sep="")
 ##numeric conversion of inputs
 wind <- as.numeric(wind)
 minInd <- as.numeric(minInd)
@@ -1145,6 +1139,14 @@ for(i in 1:length(fileVector)){ #loop over input files
     GL <- fread(input=fileVector[i],sep="\t",showProgress=TRUE,header=FALSE,data.table=FALSE)
     rowsGL <- dim(GL)[1]
     nInd <- length( unique( GL[,3] ) )
+    inputNames <- c()
+    if(!is.na(nameList))
+        inputNames <- unlist( read.table(nameList, header=FALSE, as.is=T)  )
+    if(is.na(nameList))
+        for(i in 1:length(filez))
+            inputNames[i] <- paste("ind_",i,sep="")
+
+    
     sites <- unique( GL[ ,2] )    
     DP <- GL[ ,5]
 
