@@ -1,4 +1,4 @@
-# Hidden Markov Ploidy
+# HMMploidy: genotype-likelihood- and coverage-based Hidden Markov Model for inference of ploidy levels.
 Tools for inferring ploidy levels, testing for aneuploidy and other stuff.
 Calculating its allele frequencies and genotype likelihoods requires to download the followings:
 
