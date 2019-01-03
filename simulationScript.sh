@@ -16,9 +16,8 @@ do
 	    shift # past argument
 	    shift # past value
 	    ;;
-	-p|--ploidy)
-	    ploidy1="$2"
-	    IFS=',' read -ra ploidy <<< "$ploidy1" #remove string ','	
+	-p|--ploidyFile)
+	    ploidy="$2"
 	    shift # past argument
 	    shift # past value
 	    ;;
@@ -28,12 +27,12 @@ do
 	    shift # past argument
 	    shift # past value
 	    ;;
-	-n|--nSamples)
-	    samples1="$2"
-	    IFS=',' read -ra samples <<< "$samples1"
-	    shift # past argument
-	    shift # past value
-	    ;;
+	#-n|--nSamples)
+	#    samples1="$2"
+	#    IFS=',' read -ra samples <<< "$samples1"
+	#    shift # past argument
+	#    shift # past value
+	#    ;;
 	-l|--loci)
 	    sites1="$2"
 	    IFS=',' read -ra sites <<< "$sites1"
@@ -90,45 +89,47 @@ rm -f $FILELIST
 #FIND SOURCE FOLDER OF THE SCRIPTS
 SCRIPTFOLDER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+NLINES=`cat $ploidy | wc -l`
+echo $NLINES
+
 #generate data for all combinations of parameters (sample and depth)
-for SAM in ${samples[@]}
+for DP in ${depth[@]}
 do
-    for DP in ${depth[@]}
+
+    SITESCOUNTER=0
+    NAME=$BASENAME.DP${DP} #basename for the file
+    echo "GENERATING FILE: " "\"" $NAME "\""
+    offset=1 #loci counter
+    rm -f $NAME.mpileup.gz $NAME.txt
+    printf 'Chrom\tStart\tend\n'
+    
+    for CFGLINE in `seq 1 $NLINES`
     do
-	SITESCOUNTER=0
-	NAME=$BASENAME.DP${DP}.NIND${SAM} #basename for the file
-	echo "GENERATING FILE: " "\"" $NAME "\""
-	offset=1 #loci counter
-	rm -f $NAME.mpileup.gz $NAME.txt
-	printf 'Chrom\tStart\tend\n'
+	#A=`sed -n -e ${CFGLINE}p $ploidy`
+	#echo $A
+	#A=`Rscript -e "cat($DP*$PL)"` #ploidy level depth
+	#echo $A
+	Rscript ${SCRIPTFOLDER}/simulMpileupCNV.R --out test.DP${DP}.txt --copy `sed -n -e ${CFGLINE}p $ploidy` --sites ${sites[$SITESCOUNTER]} --depth $DP --qual 20 --ksfs 1 --ne 10000 --offset $offset --seed $seedInput --pvar $pvarInput | gzip -c -f > $NAME.BUFFER.mpileup.gz
 	
-	for PL in ${ploidy[@]} #sequentially generate ploidy levels
-	do
+	printf '%s\t%d\t%d\n' `sed -n -e ${CFGLINE}p $ploidy` "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))"
+	    
+	#printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))" >> $NAME.fai
 
-	    A=`Rscript -e "cat($DP*$PL)"` #ploidy level depth
-	    #echo $A
-	    Rscript ${SCRIPTFOLDER}/simulMpileup.R --out $NAME.test.txt --copy ${PL}x${SAM} --sites ${sites[$SITESCOUNTER]} --depth $A --qual 20 --ksfs 1 --ne 10000 --offset $offset --seed $seedInput --pvar $pvarInput | gzip -c -f > $NAME.BUFFER.mpileup.gz
+	#keep track of number of loci
+	offset=$(($offset+${sites[$SITESCOUNTER]}))
+	
+	#concatenate ploidy levels in a buffer file
+	zcat $NAME.BUFFER.mpileup.gz >> $NAME.BUFFER.txt
 
-	    printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))"
-
-	    #printf 'copy_%dx%d\t%d\t%d\n' "$PL" "$SAM" "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))" >> $NAME.fai
-
-	    #keep track of number of loci
-	    offset=$(($offset+${sites[$SITESCOUNTER]}))
-
-	    #concatenate ploidy levels in a buffer file
-	    zcat $NAME.BUFFER.mpileup.gz >> $NAME.BUFFER.txt
-
-	    SITESCOUNTER=$(($SITESCOUNTER + 1))
-	done
-
-	#handle some stuff
-	rm -f $NAME.test.txt $NAME.BUFFER.mpileup.gz
-	cat $NAME.BUFFER.txt | gzip -c > $NAME.mpileup.gz
-	rm -f $NAME.BUFFER.txt
-	echo $NAME >> $FILELIST
-
+	SITESCOUNTER=$(($SITESCOUNTER + 1))
     done
+
+    #handle some stuff
+    rm -f test.DP${DP}.txt $NAME.BUFFER.mpileup.gz
+    cat $NAME.BUFFER.txt | gzip -c > $NAME.mpileup.gz
+    rm -f $NAME.BUFFER.txt
+    echo $NAME >> $FILELIST
+    
 done
 
 echo "output file list " "\"" $FILELIST "\""

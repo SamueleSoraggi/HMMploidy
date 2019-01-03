@@ -12,7 +12,7 @@ spec=matrix(c(
 	      'out',	'o', 2, "character", "output files for real data (and log if verbose), (mpileup is in stdout)",
 	      'copy', 	'c', 1, "character", "ploidy per sample, e.g. 2x3,4 is 2,2,2,4",
 	      'sites', 	's', 2, "integer", "number of sites [default 1,000]",
-	      'depth', 	'd', 2, "double", "mean depth per sample [default 20.0]",
+	      'depth', 	'd', 2, "double", "mean haploid depth per sample [default 20.0]",
 	      'lendepth', 'l', 2, "integer", "mean length of sites with increasing/decreasing depth [default 0, disabled]",
 	      'errdepth', 'e', 2, "double", "error rate in mean depth [default 0.05]",
 	      'qual', 'q', 2, "integer", "mean base quality in phred score [default 20]",
@@ -75,8 +75,9 @@ for (i in 1:length(tmp)) {
 	}
 }
 rm(tmp); rm(tmp2)
-if (max(ncopy)>5) {
-	cat("Max ploidy is 5.\n")
+ncopy=as.numeric(ncopy)
+if (max(ncopy)>6) {
+	cat("Max ploidy is 6.\n")
 	q(status=1)
 }
 
@@ -96,11 +97,17 @@ if (opt$verbose & !is.null(opt$out)) {
 
 # sample depths and qualities, the latter are centered around phred score = 10
 
-rangeLams <- opt$depth+(opt$depth*opt$errdepth*c(-1,1))
-sampledLams <- runif(nsites*nsams, min=rangeLams[1], max=rangeLams[2])
+rangeLams <- rep(0,nsites)
+sampledLams <- rep(0,nsites)
+depth <- matrix( 0, nrow=nsams, ncol=nsites )
+for(samIdx in 1:nsams){
+    rangeLams <- opt$depth * ncopy[samIdx] + (opt$depth * ncopy[samIdx] * opt$errdepth * c(-1,1))
+    sampledLams <- runif(nsites, min=rangeLams[1], max=rangeLams[2])
+    depth[samIdx,] <- rpois(nsites,sampledLams)
+    }
 
-depth <- matrix(rpois(sampledLams, sampledLams), nrow=nsams, ncol=nsites)
 rm(sampledLams)
+rm(rangeLams)
 
 if (opt$lendepth>0) {
 
