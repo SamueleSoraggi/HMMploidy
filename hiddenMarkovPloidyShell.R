@@ -104,7 +104,7 @@ for(i in 1:length(filez)){
     splittedName <- unlist(strsplit(filez[i],split="/"))
     BASENAMEFILE[i] <- splittedName[length(splittedName)]
     outPdf[i] <- paste(filez[i],".pdf",sep="")
-    outTxt[i] <- paste(filez[i],".hiddenMarkovPloidy",sep="")
+    outTxt[i] <- paste(filez[i],".HMMploidy",sep="")
 }
 
 
