@@ -107,7 +107,7 @@ for(i in 1:length(filez)){
     outTxt[i] <- paste(filez[i],".HMMploidy",sep="")
 }
 
-
+inputNames <- c()
 if(!is.na(nameList))
     inputNames <- unlist( read.table(nameList, header=FALSE, as.is=T)  )
 if(is.na(nameList))
