@@ -1065,7 +1065,7 @@ freqsSingle <- function(major,minor,ws,loci,lociSNP=loci,findSNP=1:length(loci))
 
 
 pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time #useless?
-    y = ncol(gl)-1
+    y = ncol(gl)-
     Lf = dim(gl)[1]
     fVector=rep(f,Lf)
     nInd = 1
@@ -1156,8 +1156,7 @@ for(i in 1:length(fileVector)){ #loop over input files
     if(!is.na(nameList))
         inputNames <- unlist( read.table(nameList, header=FALSE, as.is=T)  )
     if(is.na(nameList))
-        for(i in 1:nInd)
-            inputNames[i] <- paste("ind_",i,sep="")
+        inputNames <- 1:nInd
 
     
     ###############################
