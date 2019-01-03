@@ -2,8 +2,8 @@
 Tools for inferring ploidy levels, testing for aneuploidy and other stuff.
 Calculating its allele frequencies and genotype likelihoods requires to download the followings:
 
-* python 3, with packages `gzip, numpy, scipy`
-* R, with packages `pracma, data.table, Rcpp`
+* python 3, with packages `gzip, numpy, scipy, statistics`
+* R, with packages `pracma, data.table, Rcpp, getopt`
 
 ## Calculate genotype likelihoods from mpileup files
 
