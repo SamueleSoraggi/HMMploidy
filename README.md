@@ -1,9 +1,9 @@
-# Hidden Markov Ploidy
+# HMMploidy: genotype-likelihood- and coverage-based Hidden Markov Model for inference of ploidy levels.
 Tools for inferring ploidy levels, testing for aneuploidy and other stuff.
 Calculating its allele frequencies and genotype likelihoods requires to download the followings:
 
-* python 3, with packages `gzip, numpy, scipy`
-* R, with packages `pracma, data.table, Rcpp`
+* python 3, with packages `gzip, numpy, scipy, statistics`
+* R, with packages `pracma, data.table, Rcpp, getopt`
 
 ## Calculate genotype likelihoods from mpileup files
 
@@ -45,7 +45,7 @@ Overview: simulate poliploidy organisms and output them in an `mpileup.gz` forma
 ### Options 
 
 * `-p` or `--ploidyFile`: file containing the desired simulated data (see below for the sintax). 
-Each line of the `ploidyFile` contains the ploidy number and the number of individuals for $K$ adjacent segments of a number $J$ of genomes. Example: $K=3$ adjacent segments and $J=20$ genomes. The first segment is diploid for all $20$ genomes, the second with is diploid for 10 genomes and tetraploid for 10 genomes, and the third is triploid for all genomes.
+Each line of the `ploidyFile` contains the ploidy number and the number of individuals for $K$ adjacent segments of a number $J$ of genomes. Example: $K=3$ adjacent segments and $20$ genomes. The first segment is diploid for all $20$ genomes, the second with is diploid for 10 genomes and tetraploid for 10 genomes, and the third is triploid for all genomes.
 ```Shell
 2x20
 2x10,4x10
