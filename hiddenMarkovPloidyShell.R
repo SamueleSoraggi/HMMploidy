@@ -1139,14 +1139,6 @@ for(i in 1:length(fileVector)){ #loop over input files
     GL <- fread(input=fileVector[i],sep="\t",showProgress=TRUE,header=FALSE,data.table=FALSE)
     rowsGL <- dim(GL)[1]
     nInd <- length( unique( GL[,3] ) )
-    inputNames <- c()
-    if(!is.na(nameList))
-        inputNames <- unlist( read.table(nameList, header=FALSE, as.is=T)  )
-    if(is.na(nameList))
-        for(i in 1:length(filez))
-            inputNames[i] <- paste("ind_",i,sep="")
-
-    
     sites <- unique( GL[ ,2] )    
     DP <- GL[ ,5]
 
@@ -1160,6 +1152,14 @@ for(i in 1:length(fileVector)){ #loop over input files
     if(!isNumericChosenInd)
         chosenInd <- 1:nInd
 
+    inputNames <- c()
+    if(!is.na(nameList))
+        inputNames <- unlist( read.table(nameList, header=FALSE, as.is=T)  )
+    if(is.na(nameList))
+        for(i in 1:nInd)
+            inputNames[i] <- paste("ind_",i,sep="")
+
+    
     ###############################
     ## begin of FOR loop to      ##
     ## read one genome at a time ##
