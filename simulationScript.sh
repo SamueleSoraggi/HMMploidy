@@ -109,7 +109,7 @@ do
 	#echo $A
 	#A=`Rscript -e "cat($DP*$PL)"` #ploidy level depth
 	#echo $A
-	Rscript ${SCRIPTFOLDER}/simulMpileupCNV.R --out test.DP${DP}.txt --copy `sed -n -e ${CFGLINE}p $ploidy` --sites ${sites[$SITESCOUNTER]} --depth $DP --qual 20 --ksfs 1 --ne 10000 --offset $offset --seed $seedInput --pvar $pvarInput | gzip -c -f > $NAME.BUFFER.mpileup.gz
+	Rscript ${SCRIPTFOLDER}/simulMpileup.R --out test.DP${DP}.txt --copy `sed -n -e ${CFGLINE}p $ploidy` --sites ${sites[$SITESCOUNTER]} --depth $DP --qual 20 --ksfs 1 --ne 10000 --offset $offset --seed $seedInput --pvar $pvarInput | gzip -c -f > $NAME.BUFFER.mpileup.gz
 	
 	printf '%s\t%d\t%d\n' `sed -n -e ${CFGLINE}p $ploidy` "$offset" "$(($offset + ${sites[$SITESCOUNTER]} - 1))"
 	    
