@@ -1194,7 +1194,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         
         ##find SNPs with thresholds .1<f<.9 and data in the individual
         SNPfilter <- eval( parse( text=paste("c(",SNPtrim,")",sep="") ) )
-        findSNP <- which( freqsIndiv>SNPtrim[1] & freqsIndiv<SNPtrim[2] )
+        findSNP <- which( freqsIndiv>SNPfilter[1] & freqsIndiv<SNPfilter[2] )
         freqsSNP <- freqsIndiv[findSNP]
         sitesSNP <- sitesIndiv[findSNP]
         totSNP <- as.vector( sapply(findSNP, function(j) ((j-1)*nInd+1):(j*nInd) ) )
