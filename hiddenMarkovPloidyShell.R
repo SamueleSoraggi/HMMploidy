@@ -48,6 +48,7 @@ print.args<-function(args,des){
 args<-list(file = NA, #single basename of file to analize (does not need the list 'filelist' for multiple files)
            fileList = NA, #list of basenames for GUNZIPPED .genolike files
            nameList = NA, #bed file to choose chromosomes and sites
+           SNPtrim = "0.1,0.9",
            wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
            maxPloidy = 6, #maximum ploidy. Must change with choice of potential ploidies (e.g. haploid might be excluded a priori by users)
            minInd = 1, #min ind having reads 
@@ -65,6 +66,7 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
 des<-list(fileList="[string] list of .genolike files",
           wind="[integer] Size of window for depth and genotype likelihoods (NA)",
           nameList = "[NA] List of names for the samples",
+          SNPtrim = "[integers] comma-separated freq for SNP trimming (0.1,0.9)",
           minInd="[integer] min Nr of individuals per locus having data (1)",
           maxPloidy="[integer] Maximum ploidy allowed (6)", #have to implement case where ploidies are chosen
           chosenInd ="[integers] which Individual to consider. one at the time for now. (NA=all)",
@@ -1191,7 +1193,8 @@ for(i in 1:length(fileVector)){ #loop over input files
 
         
         ##find SNPs with thresholds .1<f<.9 and data in the individual
-        findSNP <- which( freqsIndiv>.1 & freqsIndiv<.9 )
+        SNPfilter <- eval( parse( text=paste("c(",SNPtrim,")",sep="") ) )
+        findSNP <- which( freqsIndiv>SNPtrim[1] & freqsIndiv<SNPtrim[2] )
         freqsSNP <- freqsIndiv[findSNP]
         sitesSNP <- sitesIndiv[findSNP]
         totSNP <- as.vector( sapply(findSNP, function(j) ((j-1)*nInd+1):(j*nInd) ) )
