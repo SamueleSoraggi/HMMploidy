@@ -48,6 +48,7 @@ print.args<-function(args,des){
 args<-list(file = NA, #single basename of file to analize (does not need the list 'filelist' for multiple files)
            fileList = NA, #list of basenames for GUNZIPPED .genolike files
            nameList = NA, #bed file to choose chromosomes and sites
+           useGeno = "yes", #use genotype likelihoods
            SNPtrim = "0.1,0.9",
            wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
            maxPloidy = 6, #maximum ploidy. Must change with choice of potential ploidies (e.g. haploid might be excluded a priori by users)
@@ -67,6 +68,7 @@ des<-list(fileList="[string] list of .genolike files",
           wind="[integer] Size of window for depth and genotype likelihoods (NA)",
           nameList = "[NA] List of names for the samples",
           SNPtrim = "[integers] comma-separated freq for SNP trimming (0.1,0.9)",
+          useGeno = "yes=use genotype likelihoods, otherwise not",
           minInd="[integer] min Nr of individuals per locus having data (1)",
           maxPloidy="[integer] Maximum ploidy allowed (6)", #have to implement case where ploidies are chosen
           chosenInd ="[integers] which Individual to consider. one at the time for now. (NA=all)",
@@ -1202,8 +1204,9 @@ for(i in 1:length(fileVector)){ #loop over input files
         windTable <- windowsBuilder(wind, sitesIndiv, sitesSNP)
         
         geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
-        for(pp in 1:maxPloidy)
-            geno2[pp,] = pGenoDataAll( f=freqsSNP, gl=as.matrix(readGL( findSNP, pp, nInd=1, GLsingle )) )
+        if(strcmp(useGeno,"yes"))
+            for(pp in 1:maxPloidy)
+                geno2[pp,] = pGenoDataAll( f=freqsSNP, gl=as.matrix(readGL( findSNP, pp, nInd=1, GLsingle )) )
         
         
         ##...and per window
@@ -1220,8 +1223,11 @@ for(i in 1:length(fileVector)){ #loop over input files
         #DPmean = DPmean[keepSites]
         #geno = geno[keepSites,]
         ##rescale likelihood of the data (avoids underflow)
-        genoResc <- t( apply( geno , 1, logRescale ) )
-        genoResc[genoResc>-.00001]=-.00001
+        if(strcmp(useGeno,"yes")){
+            genoResc <- t( apply( geno , 1, logRescale ) )
+            genoResc[genoResc>-.00001]=-.00001
+        }
+        
         ##some initial parameters
         delta=rep(1/maxPloidy,maxPloidy) #i think it is ok without prior info
         Pi0=matrix(1/maxPloidy,nrow=maxPloidy,ncol=maxPloidy)
