@@ -1085,7 +1085,6 @@ pGenoDataSingle <- function(f,gl,h=0){  #use one individual at a time #useless?
         glSum <- gl[idx,] + matrix( rep(  dbinom(0:y,y,freq,log=TRUE), nInd ), nrow=nInd, byrow=T )
         X[l] <- sum( rowSumsLog( glSum ) )        
     }
-    #find sites hvor f passer bedst - ordering?
     return( X )    
 }
 
@@ -1223,6 +1222,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         #DPmean = DPmean[keepSites]
         #geno = geno[keepSites,]
         ##rescale likelihood of the data (avoids underflow)
+        genoResc = geno
         if(strcmp(useGeno,"yes")){
             genoResc <- t( apply( geno , 1, logRescale ) )
             genoResc[genoResc>-.00001]=-.00001
