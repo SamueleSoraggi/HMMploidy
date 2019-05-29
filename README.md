@@ -80,7 +80,7 @@ The output will consists of two files: `outFile.DP10.mpileup.gz` and `outFile.DP
 Overview: infer ploidy levels of each individual in a `.genolikes` file (uncompressed file from the output of the `Genotype_Likelihoods.py` script) using sequencing coverage and genotype likelihoods.
 
 ````Shell
-Rscript hiddenMarkovPloidyShell.R fileList=$FILELIST wind=100
+Rscript HMMploidy.R fileList=$FILELIST wind=100
 ````
 ### Input
 
@@ -106,7 +106,7 @@ Note:
 
 For each base name, there are two outputs:
 * a `.pdf` file with inferred ploidy numbers for each individual
-* a `.hiddenMarkovPloidy` file where, for each individual, results are arranged on lines as it follows:
+* a `.HMMploidy` file where, for each individual, results are arranged on lines as it follows:
    * File name and sample name
    * starting probability vector $\delta$ of inferred ploidy numbers
    * transition matrix $A$ printed on one line (column by column)
@@ -147,13 +147,11 @@ python3 $SCRIPTPATH/Genotype_Likelihoods.py poliploidyGenome.filelist
 Run the analysis of ploidy numbers for the two simulated datasets. Use window size 100, analyze all the individuals, consider the max ploidy number being 5, do not trim the data, and use loci where there is data for >=2 individuals
 ```Shell
 gunzip *.genolikes.gz #the R script needs gunzipped genolikes files
-Rscript $SCRIPTPATH/hiddenMarkovPloidyShell.R  fileList=poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=2
+Rscript $SCRIPTPATH/HMMploidy.R  fileList=poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=2
 ```
 
 In output you will find the pdf files `poliploidyGenome.DP4.pdf`,`poliploidyGenome.DP8.pdf` with a fancy plot of the inferred ploidy for each individual and the mean depth of each window. The text output is contained in the files `poliploidyGenome.DP4.HMMploidy`,`poliploidyGenome.DP8.HMMploidy`
 
-# PLANNING/EXPECTATION FOR THE NEXT UPDATE:
+### Notes
+Each `.genolikes` file given in input to `HMMploidy.R` is expected to have only one chromosome. However, in presence of more chromosomes/contigs, the software will automatically analyze the contigs as adjacent in a whole genome fashion. Windows of loci will be done in each chromosome/contig to avoid sharing loci in a window between chromosomes/contigs. Windows will be downsized in chromosomes/contigs not large enough, and chromosomes/contigs without SNPs will be automatically removed from the analysis.
 
-* SCRIPT FOR COMPARING LOGLIKELIHOOD DIFFERENCES BASED ON A "REFERENCE" HIDDEN MARKOV MODEL
-* FILTERING BASED ON THE PROPORTION OF POSTERIOR PROBABILITY FOR EACH PLOIDY
-* FILTERING BASED ON OVERLAPPING PARAMETERS OF THE 
