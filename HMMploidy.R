@@ -981,7 +981,7 @@ windowsBuilder <- function(minSize, loci, lociSNP){ #do windows and merge them w
         S <- c( seq(loci[1], loci[length(loci)-1], minSize), loci[length(loci)] )
     if(length(loci)==2)
         S <- c( loci[1], loci[2] )
-    if( max(ctgSites) - min(ctgSites) < minSize)
+    if( max(loci) - min(loci) < minSize)
         S <- c( min(loci), max(loci) )
     res <- sapply(1:(length(S)-1), function(ll){
         idx <- which(lociSNP>S[ll] & lociSNP<=S[ll+1])
@@ -1265,18 +1265,24 @@ for(i in 1:length(fileVector)){ #loop over input files
                 } 
             }
             cat("Removed ", length(rmChrName), " contigs/chromosomes that had no SNPs\n", sep="")
-            findSNP <- findSNP[ -c(rmChrSNP)  ]
-            freqsSNP <- freqsSNP[ -c(rmChrSNP) ]
-            sitesSNP <- sitesSNP[ -c(rmChrSNP) ]
-            sitesIndiv <- sitesIndiv[ -c( rmChrSingle ) ]
-            DPsingle <- DPsingle[-c( rmChrSingle )] #individual filtered data
-            #GLsingle <- GLsingle[-c( rmChrSingle ), ] #...""
-            freqsIndiv <- freqs[-c( rmChrSingle )] #......""
-            majorSingle <- majorReads[-c( rmChrSingle )] #......""
-            minorSingle <- minorReads[-c( rmChrSingle )] #......""      
-            chrSingle <- chrSingle[ -c( rmChrSingle ) ]
-            chrSNP <- chrSNP[ -c( rmChrSNP ) ]
-            chrName <- chrName[ !(chrName %in% rmChrName) ] 
+            if(!is.null(rmChrSNP)){
+                findSNP <- findSNP[ -c(rmChrSNP)  ]
+                freqsSNP <- freqsSNP[ -c(rmChrSNP) ]
+                sitesSNP <- sitesSNP[ -c(rmChrSNP) ]
+            }
+            if(!is.null(rmChrSingle)){
+                sitesIndiv <- sitesIndiv[ -c( rmChrSingle ) ]
+                DPsingle <- DPsingle[-c( rmChrSingle )] #individual filtered data
+                ##GLsingle <- GLsingle[-c( rmChrSingle ), ] #...""
+                freqsIndiv <- freqs[-c( rmChrSingle )] #......""
+                majorSingle <- majorReads[-c( rmChrSingle )] #......""
+                minorSingle <- minorReads[-c( rmChrSingle )] #......""      
+                chrSingle <- chrSingle[ -c( rmChrSingle ) ]
+            }
+            if(!is.null(rmChrSNP))
+                chrSNP <- chrSNP[ -c( rmChrSNP ) ]
+            if(!is.null(rmChrName))
+                chrName <- chrName[ !(chrName %in% rmChrName) ] 
         }
 
         
