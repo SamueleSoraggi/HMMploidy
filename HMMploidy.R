@@ -61,7 +61,7 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
            alpha = NA, #alpha parameters comma separated
            beta = NA, #beta parameters comma separated
            quantileTrim ="0.02,0.98", #quantiles for trimming
-           outSuffix = "",#path + prefix for output filename
+           outSuffix = NA,#path + prefix for output filename
            eps = .0005 #effect of sequencing and mapping error
            )
 
@@ -81,7 +81,7 @@ des<-list(fileList="[string] list of .genolike files",
           beta="[numerics] beta parameters comma separated (NA, read from .par file)",
           quantileTrim="[integers] comma-separated quantiles for trimming (0,1)",
           eps="sequencing/mapping error rate ",
-          outSuffix="suffix for the output file"
+          outSuffix="suffix for the output file (Default: empty name)"
           )
   
 ##get arguments and add to workspace
@@ -113,7 +113,11 @@ for(i in 1:length(filez)){
     splittedName <- unlist(strsplit(filez[i],split="/"))
     BASENAMEFILE[i] <- splittedName[length(splittedName)]
     outPdf[i] <- paste(filez[i],".pdf",sep="")
-    outTxt[i] <- paste(filez[i],outSuffix,"HMMploidy",sep=".")
+    if(is.na(outSuffix))
+        outTxt[i] <- paste(filez[i],"HMMploidy",sep=".")
+    if(!is.na(outSuffix))
+        outTxt[i] <- paste(filez[i],outSuffix,"HMMploidy",sep=".")
+    
 }
 ##numeric conversion of inputs
 wind <- as.numeric(wind)
@@ -1590,7 +1594,6 @@ for(i in 1:length(fileVector)){ #loop over input files
             fileCounter <- fileCounter + 1
         }
     }
-    print("ciao")
     ##close pdf plot connection
     dev.off()
 }
