@@ -1578,7 +1578,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         stringPlot <- sprintf("\tInferred ploidies from %s\nSample: %s",BASENAMEFILE[i], inputNames[whichInd])
         hmmRes$'chrSNP' <- chrSNP
         if(strcmp(useGeno,"yes")){
-            cat( "Inferred state sequence: ", V$y, "\n", sep=" ")
+            #cat( "Inferred state sequence: ", V$y, "\n", sep=" ")
             hmmPlotting(hmmRes, V, truePl=NA, main=stringPlot, propStates=propStates, CNV=rep(FALSE, length(V$y)))
             ##print on screen    
             cat(sprintf("\tInferred ploidies from %s. Sample: %s\n", BASENAMEFILE[i], inputNames[whichInd]))
@@ -1586,7 +1586,7 @@ for(i in 1:length(fileVector)){ #loop over input files
             fileCounter <- fileCounter + 1
         }
         if(!strcmp(useGeno,"yes")){
-            cat("Inferred state sequence: ", hmmOut, "\n", sep=" ")
+            #cat("Inferred state sequence: ", hmmOut, "\n", sep=" ")
             hmmPlotting(hmmRes, V=list(y=hmmOut, nu=matrix(0,length(hmmOut),length(unique(hmmOut)))), truePl=NA, main=stringPlot, propStates=propStates, CNV=rep(FALSE, length(hmmOut))) #add loci from windows
             ##print on screen    
             cat(sprintf("\tInferred ploidies from %s. Sample: %s\n", BASENAMEFILE[i], inputNames[whichInd]))
