@@ -1177,7 +1177,7 @@ for(i in 1:length(fileVector)){ #loop over input files
     GL <- fread(input=fileVector[i],sep="\t",showProgress=TRUE,header=FALSE,data.table=FALSE)
     rowsGL <- dim(GL)[1]
     chr <- GL[,1]
-    chrName = unique(chr)
+    chrName = unique(chr) #keep unchanged
     nInd <- length( unique( GL[,3] ) )
     sites <- c() #same loci in different chromosome would get cancelled. do one chromosome at a time
     for(chrN in chrName)
@@ -1215,7 +1215,10 @@ for(i in 1:length(fileVector)){ #loop over input files
     pdf(outPdf[i])
 
     for(whichInd in chosenInd){ #loop over individuals
-    
+        
+        chrNameVar = chrName #vector names of chromosomes that can change in the for loop
+        chrVar = chr
+        
         ##select single individual depth and genolikes
         idxSingle <- seq(whichInd,rowsGL,nInd)
         chrSingle <- chr[idxSingle]
@@ -1236,33 +1239,36 @@ for(i in 1:length(fileVector)){ #loop over input files
         idxTot = as.vector( sapply(idx, function(j) ((j-1)*nInd+1):(j*nInd) ) )
         GLfiltered <- GL[idxTot, ] #all data filtered
         DPfiltered <- DP[idxTot] #......""
-        chr <- chr[idxTot]
+        chrVar <- chrVar[idxTot]
         
         ##find SNPs with thresholds .1<f<.9 (or different from input) in the individual
         SNPfilter <- eval( parse( text=paste("c(",SNPtrim,")",sep="") ) )
         findSNP <- which( freqsIndiv>SNPfilter[1] & freqsIndiv<SNPfilter[2] )
         freqsSNP <- freqsIndiv[findSNP]
         sitesSNP <- sitesIndiv[findSNP]
+        chrSNP <- chrSingle[findSNP]
         totSNP <- as.vector( sapply(findSNP, function(j) ((j-1)*nInd+1):(j*nInd) ) )
-        chrSNP <- chr[findSNP]
-
+        chrVar <- chrVar[totSNP]
+        chrNameVar = unique(chrVar) #remember to update chromosome names because you might remove a chromosome
+        
         ##remove contigs without loci or make smaller window if not enough loci
         rmChrSNP <- c()
         rmChrSingle <- c()
         rmChrTot <- c()
         rmChrName <- c()
-        if(length(chrName)>1){
-            for(nn in chrName){
+        if(length(chrNameVar)>1){
+            for(nn in chrNameVar){
                 ctgSites <- sitesSNP[chrSNP==nn]
+                #print(nn)
                 if(length(ctgSites)==0)
                     ctgSites=1 #to avoid warnings           
                 if( max(ctgSites) - min(ctgSites) == 0 ){
                     #cat(max(ctgSites) - min(ctgSites), " in ", nn,"\n")
                     rmChrSNP <- c(rmChrSNP, which(chrSNP==nn))
                     rmChrSingle <- c(rmChrSingle, which(chrSingle==nn))
-                    rmChrTot <- c(rmChrTot, which(chr==nn))
+                    rmChrTot <- c(rmChrTot, which(chrVar==nn))
                     rmChrName <- c(rmChrName, nn)
-                } 
+                }
             }
             cat("Removed ", length(rmChrName), " contigs/chromosomes that had no SNPs\n", sep="")
             if(!is.null(rmChrSNP)){
@@ -1282,50 +1288,49 @@ for(i in 1:length(fileVector)){ #loop over input files
             if(!is.null(rmChrSNP))
                 chrSNP <- chrSNP[ -c( rmChrSNP ) ]
             if(!is.null(rmChrName))
-                chrName <- chrName[ !(chrName %in% rmChrName) ] 
+                chrNameVar <- chrNameVar[ !(chrNameVar %in% rmChrName) ] 
         }
 
         
-        if(length(chrName)==1)
+        if(length(chrNameVar)==1)
             windTable <- windowsBuilder(wind, sitesIndiv, sitesSNP)
-        if(length(chrName)>1){
+        if(length(chrNameVar)>1){
             chrTable <- c()
             rowIndex <- 1
             ##windTable <- matrix(0,nrow=length(sitesSNP),ncol=2)
-            subSitesIndiv <- sitesIndiv[chrSingle==chrName[1]]
-            subSitesSNP <- sitesSNP[chrSNP==chrName[1]]
+            subSitesIndiv <- sitesIndiv[chrSingle==chrNameVar[1]]
+            subSitesSNP <- sitesSNP[chrSNP==chrNameVar[1]]
             windTable <- windowsBuilder(wind, subSitesIndiv, subSitesSNP)
-            chrTable <- c(chrTable, rep(chrName[1], dim(windTable)[1]))
-            for(chrIdx in 2:length(chrName)){
-                subSitesIndiv <- sitesIndiv[chrSingle==chrName[chrIdx]]
-                subSitesSNP <- sitesSNP[chrSNP==chrName[chrIdx]]
+            chrTable <- c(chrTable, rep(chrNameVar[1], dim(windTable)[1]))
+            for(chrIdx in 2:length(chrNameVar)){
+                subSitesIndiv <- sitesIndiv[chrSingle==chrNameVar[chrIdx]]
+                subSitesSNP <- sitesSNP[chrSNP==chrNameVar[chrIdx]]
                 windTable <- rbind(windTable, windowsBuilder(wind, subSitesIndiv, subSitesSNP))
-                chrTable <- c(chrTable, rep(chrName[chrIdx], dim(windTable)[1]-length(chrTable)))
+                chrTable <- c(chrTable, rep(chrNameVar[chrIdx], dim(windTable)[1]-length(chrTable)))
             }
         }
         
         geno2 <- matrix(0, nrow=maxPloidy, ncol=length(freqsSNP))
         ##if(strcmp(useGeno,"yes"))
         for(pp in 1:maxPloidy)
-            for(nn in chrName)
+            for(nn in chrNameVar)
                 geno2[pp,chrSNP==nn] = pGenoDataAll( f=freqsSNP[chrSNP==nn], gl=as.matrix(readGL( findSNP[chrSNP==nn], pp, nInd=1, GLsingle )) )
             
-        
         ##...and per window
-        if(length(chrName)==1)
+        if(length(chrNameVar)==1)
             geno <- apply( geno2, 1, function(x) sumGeno(x,windTable,sitesSNP) )
-        if(length(chrName)>1){
-            geno <- apply( geno2, 1, function(x) sumGeno(x,matrix(windTable[chrTable==chrName[1],],ncol=2),sitesSNP[chrSNP==chrName[1]]) )
-            for(chrIdx in 2:length(chrName))
-                geno <- rbind(geno, apply( geno2, 1, function(x) sumGeno(x,matrix(windTable[chrTable==chrName[chrIdx],], ncol=2),sitesSNP[chrSNP==chrName[chrIdx]]) ))
+        if(length(chrNameVar)>1){
+            geno <- apply( geno2, 1, function(x) sumGeno(x,matrix(windTable[chrTable==chrNameVar[1],],ncol=2),sitesSNP[chrSNP==chrNameVar[1]]) )
+            for(chrIdx in 2:length(chrNameVar))
+                geno <- rbind(geno, apply( geno2, 1, function(x) sumGeno(x,matrix(windTable[chrTable==chrNameVar[chrIdx],], ncol=2),sitesSNP[chrSNP==chrNameVar[chrIdx]]) ))
         }
         
-        if(length(chrName)==1)
+        if(length(chrNameVar)==1)
             DPmean <- meanGeno( DPsingle, windTable, sitesIndiv)
-        if(length(chrName)>1){
-            DPmean <- meanGeno( DPsingle[chrSingle==chrName[1]], matrix(windTable[chrTable==chrName[1],],ncol=2), sitesIndiv[chrSingle==chrName[1]])
-            for(chrIdx in 2:length(chrName))
-                DPmean <- c( DPmean, meanGeno( dp=DPsingle[chrSingle==chrName[chrIdx]], wind=matrix(windTable[chrTable==chrName[chrIdx],],ncol=2), sitesIndiv[chrSingle==chrName[chrIdx]]) )
+        if(length(chrNameVar)>1){
+            DPmean <- meanGeno( DPsingle[chrSingle==chrNameVar[1]], matrix(windTable[chrTable==chrNameVar[1],],ncol=2), sitesIndiv[chrSingle==chrNameVar[1]])
+            for(chrIdx in 2:length(chrNameVar))
+                DPmean <- c( DPmean, meanGeno( dp=DPsingle[chrSingle==chrNameVar[chrIdx]], wind=matrix(windTable[chrTable==chrNameVar[chrIdx],],ncol=2), sitesIndiv[chrSingle==chrNameVar[chrIdx]]) )
         }
         
         ##clean from NA, NaN or infinite values
@@ -1570,7 +1575,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         hmmRes$'chrSNP' <- chrSNP
         if(strcmp(useGeno,"yes")){
             cat( "Inferred state sequence: ", V$y, "\n", sep=" ")
-            hmmPlotting(hmmRes, V, truePl=truePl, main=stringPlot, propStates=propStates, CNV=rep(FALSE, length(V$y)))
+            hmmPlotting(hmmRes, V, truePl=NA, main=stringPlot, propStates=propStates, CNV=rep(FALSE, length(V$y)))
             ##print on screen    
             cat(sprintf("\tInferred ploidies from %s. Sample: %s\n", BASENAMEFILE[i], inputNames[whichInd]))
             cat("\t-----------------------------------------------------\n")
@@ -1578,14 +1583,14 @@ for(i in 1:length(fileVector)){ #loop over input files
         }
         if(!strcmp(useGeno,"yes")){
             cat("Inferred state sequence: ", hmmOut, "\n", sep=" ")
-            hmmPlotting(hmmRes, V=list(y=hmmOut, nu=matrix(0,length(hmmOut),length(unique(hmmOut)))), truePl=truePl, main=stringPlot, propStates=propStates, CNV=isCNV) #add loci from windows
+            hmmPlotting(hmmRes, V=list(y=hmmOut, nu=matrix(0,length(hmmOut),length(unique(hmmOut)))), truePl=NA, main=stringPlot, propStates=propStates, CNV=rep(FALSE, length(hmmOut))) #add loci from windows
             ##print on screen    
             cat(sprintf("\tInferred ploidies from %s. Sample: %s\n", BASENAMEFILE[i], inputNames[whichInd]))
             cat("\t-----------------------------------------------------\n")
             fileCounter <- fileCounter + 1
         }
     }
-
+    print("ciao")
     ##close pdf plot connection
     dev.off()
 }
