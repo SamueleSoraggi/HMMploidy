@@ -29,6 +29,7 @@ ploidy = [1,2,3,4,5,6]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files for use in analysis to be used")
+parser.add_argument("-ft","--fileType",help="file type of the input file, mpileup or bam")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
 parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--downsampling",help="Fraction of data to be used in the calculations",default=1)
