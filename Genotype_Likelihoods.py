@@ -26,7 +26,6 @@ alleles = ['A','C','G','T']
 ploidy = [1,2,3,4,5,6]
 
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files for use in analysis to be used")
 parser.add_argument("-ft","--fileType",help="file type of the input file, mpileup or bam")
@@ -43,13 +42,24 @@ args = parser.parse_args()
 
 
 
+"""
+notes
 
-input = args.input #Input file in form of gziped mpileup
+gzipped mpileup files. should we make it compatible with non-zipped mpileup files?
+
+should i put following lines about mpileup in a big if statement? is there a better way to handle the filetypes?
+
+will it be 6p-octaploidy for maximum?
+"""
+
+
+input = args.input #Input file in form of gziped mpileup or bam
+fileType = args.fileType
+
 list_of_inputs=[]
 with open(input,'rb') as f:
     for line in f:
         line=line.decode().strip('\n')# Convert bytes into string
-        #line=line+".mpileup.gz"
         list_of_inputs.append(line)
 Nfiles=len(list_of_inputs)
 print('%d files found' %Nfiles)
