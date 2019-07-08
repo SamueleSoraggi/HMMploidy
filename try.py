@@ -10,6 +10,8 @@ fileType = args.fileType
 out = "asd" + "." + fileType
 print(out)
 
+
+print(type(fileType))
 fileTypes = ["mpileup.gz", "bam"]
 if fileType not in fileTypes:
     sys.exit(fileType + " is not supported")

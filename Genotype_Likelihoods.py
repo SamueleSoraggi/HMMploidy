@@ -1,6 +1,7 @@
 #! usr/bin/python3
 import sys
 import gzip
+import pybam
 import generics
 import numpy as np
 import math 
@@ -52,10 +53,12 @@ should i put following lines about mpileup in a big if statement? is there a bet
 will it be 6p-octaploidy for maximum?
 
 Instead of adding an option I can make it understand the fileType from the input.endswith()
+
+Should I skip the inbreeding coefficent part?
 """
 
 
-input = args.input # Input file in form of gziped mpileup or bam
+input = args.input # Input file in form of gzipped mpileup or bam
 
 list_of_inputs=[]
 with open(input,'rb') as f:
@@ -72,27 +75,29 @@ if fileType not in fileTypes:
     sys.exit(fileType + " is not a supported filetype. Try using mpileup.gz or bam files instead.")
 
 outFolder = args.outFolder
-for g1 in list_of_inputs: #output files names
+for g1 in list_of_inputs: # Output files names
     directory = '/'.join(g1.split('/')[:-1])
     if len(directory) == 0:
-        g="./"+g1+".mpileup.gz"
+        g="./" + g1 + "." + fileType
         if outFolder==0:
             output = "./"+g1+".genolikes.gz"
         else:
             output = outFolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
     else:
-        g=g1+".mpileup.gz"
+        g=g1 + "." + fileType
         if outFolder==0:
             output = g1+".genolikes.gz"
         else:
             output = outFolder+"/"+g1.split('/')[-1]+".genolikes.gz"
 
-    print(output)        
+##### gzipped mpileup
+
+    print(output)      
     with gzip.open(g) as f:
         first_line = f.readline()
-        Data=first_line.decode().strip('\n')# Convert bytes into string
+        Data=first_line.decode().strip('\n') # Convert bytes into string
         l = Data.split('\t')
-    NSAMS=int((len(l)-3)/3)
+    NSAMS=int((len(l)-3)/3) # ??????
     if args.Inbreeding:
         inbreed = args.Inbreeding
     else:
@@ -151,7 +156,7 @@ for g1 in list_of_inputs: #output files names
             [bases,qualities] = generics.filter(myReads,args.min_quality_score)
             myReads=Reads(bases,qualities)
 
-            #find all indexes of occurances to be filtered out
+            #find all indexes of occurences to be filtered out
             index_of_X=[]
             index=-1
             while True:
