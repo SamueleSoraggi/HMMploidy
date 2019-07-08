@@ -470,18 +470,10 @@ def filter(reads,min_quality_score):
     phredScale=33
     bases=""
     qualities=""
-    for i in range(0,len(reads.base)):
+    reads_count=len(reads.base)
+    for i in range(0,reads_count):
         if ord(reads.base_quality[i])-phredScale>min_quality_score:
             bases+=reads.base[i]
             qualities+=reads.base_quality[i]
     return(bases,qualities)
-
-
-    
-            
-
-    
-            
-
-
 
