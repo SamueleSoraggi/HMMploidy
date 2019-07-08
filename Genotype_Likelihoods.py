@@ -28,7 +28,7 @@ ploidy = [1,2,3,4,5,6]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files for use in analysis to be used")
-parser.add_argument("-ft","--fileType",help="file type of the input file, mpileup or bam")
+parser.add_argument("-ft","--fileType",help="file type of the input file, mpileup.gz or bam")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
 parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--downsampling",help="Fraction of data to be used in the calculations",default=1)
@@ -50,11 +50,12 @@ gzipped mpileup files. should we make it compatible with non-zipped mpileup file
 should i put following lines about mpileup in a big if statement? is there a better way to handle the filetypes?
 
 will it be 6p-octaploidy for maximum?
+
+Instead of adding an option I can make it understand the fileType from the input.endswith()
 """
 
 
-input = args.input #Input file in form of gziped mpileup or bam
-fileType = args.fileType
+input = args.input # Input file in form of gziped mpileup or bam
 
 list_of_inputs=[]
 with open(input,'rb') as f:
@@ -64,6 +65,11 @@ with open(input,'rb') as f:
 Nfiles=len(list_of_inputs)
 print('%d files found' %Nfiles)
 print(list_of_inputs)
+
+fileType = args.fileType
+fileTypes = ["mpileup.gz", "bam"] # Supported filetypes
+if fileType not in fileTypes:
+    sys.exit(fileType + " is not a supported filetype. Try using mpileup.gz or bam files instead.")
 
 outFolder = args.outFolder
 for g1 in list_of_inputs: #output files names
