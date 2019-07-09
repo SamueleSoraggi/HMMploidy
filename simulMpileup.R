@@ -22,8 +22,8 @@ spec=matrix(c(
 	      'pool', 'p', 0, "logical", "enable pool data",
 	      'help', 'h', 0, "logical", "print help message",
 	      'verbose', 'v', 0, "logical", "verbose creates log file",
-          'offset', 'f', 0, "integer", "offset value for genomic position",
-          'seed','u', 2, "integer", "random seed for simulations reproducibility [default 180218]"
+	      'offset', 'f', 0, "integer", "offset value for genomic position",
+	      'seed','u', 2, "integer", "random seed for simulations reproducibility [default 180218]"
 	      ), byrow=TRUE, ncol=5)
 opt <- getopt(spec)
 
@@ -224,6 +224,14 @@ for (i in 1:opt$sites) {
 	for (n in 1:nsams) { # cycle across samples
 
 		alls <- bqs <- c() # init bases and qualities
+
+        ploidy <- ncopy[n]
+
+
+
+
+
+
 
 		# haploid case
 		if (ncopy[n]==1) {

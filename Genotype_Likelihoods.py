@@ -42,24 +42,6 @@ parser.add_argument("-M3","--max_minor3_freq",type=float,help="Set the maximum f
 args = parser.parse_args()
 
 
-
-"""
-notes
-
-gzipped mpileup files. should we make it compatible with non-zipped mpileup files? Y
-
-should i put following lines about mpileup in a big if statement? is there a better way to handle the filetypes?Y
-
-will it be 6p-octaploidy for maximum?generics.py generalize it/ calc geno log like4_major minor
-
-Instead of adding an option I can make it understand the fileType from the input.endswith()
-
-Should I skip the inbreeding coefficent part?Y
-
-What is NSAMS?
-"""
-
-
 input = args.input # Input file in form of mpileup, gzipped mpileup or bam
 
 list_of_inputs=[]
