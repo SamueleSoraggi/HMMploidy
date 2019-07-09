@@ -11,9 +11,15 @@ Overview: calculate genotype likelihoods
 
 `Genotype_Likelihoods.py names.filelist`
 
-### Input
+takes in input the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension), for example:
 
-* `Input`: name of a text file containing the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension)
+```
+file1
+file2
+file3
+```
+
+for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
 
 ### Options
 
@@ -137,7 +143,7 @@ with the file `ploidy.file` containing:
 2x5
 ```
 
-There are two simulated `.mpileup.gz` files in output: `poliploidyGenome.DP3.mpileup.gz, poliploidyGenome.DP8.mpileup.gz, and a file containing the list of prefixes for calculating the genotype likelihoods: `poliploidyGenome.filelist`
+There are two simulated `.mpileup.gz` files in output: `poliploidyGenome.DP3.mpileup.gz, poliploidyGenome.DP8.mpileup.gz`, and a file containing the list of prefixes for calculating the genotype likelihoods: `poliploidyGenome.filelist`
 
 Calculate genotype likelihoods without applying any filter (see the script options for filtering details):
 ```Shell
