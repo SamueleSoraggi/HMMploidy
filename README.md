@@ -11,7 +11,7 @@ Overview: simulate poliploidy organisms and output them in an `mpileup.gz` forma
 
 `simulationScript.sh -p $FILE -d $DEPTH -l $LOCI -o $OUTNAME`
 
-### Options 
+### Input
 
 * `-p` or `--ploidyFile`: file containing the desired simulated data (see below for the sintax). 
 Each line of the `ploidyFile` contains the ploidy number and the number of individuals for $K$ adjacent segments of a number $J$ of genomes. Example: $K=3$ adjacent segments and $20$ genomes. The first segment is diploid for all $20$ genomes, the second with is diploid for 10 genomes and tetraploid for 10 genomes, and the third is triploid for all genomes.
@@ -50,18 +50,16 @@ Overview: calculate genotype likelihoods
 
 `Genotype_Likelihoods.py names.filelist`
 
-takes in input the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension), for example:
+### Input
+
+* the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension), for example:
 
 ```
 file1
 file2
 file3
 ```
-
 for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
-
-### Options
-
 * `-o` or `--outFolder`: Output folder. Default: the folder of each input files
 * `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
 * `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in (0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
@@ -86,21 +84,28 @@ python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2
 Overview: infer ploidy levels of each individual in a `.genolikes` file (uncompressed file from the output of the `Genotype_Likelihoods.py` script) using sequencing coverage and genotype likelihoods.
 
 ````Shell
-Rscript HMMploidy.R fileList=$FILELIST wind=100
+Rscript HMMploidy.R fileList=$FILELIST wind=$WIND 
 ````
 ### Input
 
-Text file containing the names of `.genolikes` files to analyze
-
-### Options
-
-* `fileList`: list of base names of files with formats `.genolikes`, uncompressed from the output of `Genotype_Likelihoods.py`. Alternatively, use `file` and write directly the prefix of the desired file (that is, without extension) that has format `.genolikes`
+* `fileList`: list of base names of files with formats `.genolikes`, uncompressed from the output of `Genotype_Likelihoods.py`. Alternatively, use `file` and write directly the prefix of the desired file that has format `.genolikes`. For example
+```
+file1
+file2
+```
+for the files `file1.genolikes, file2.genolikes`.
 * `wind`: windows size, i.e. nr of loci whose means and genotype likelihoods are summed together
 * `maxPloidy`: max number of ploidy levels (default `6`) 
-* `nameFile`: file with names of all the individuals in the genotype likelihoods file (default: names are ind1, ind2, ...)
-* `chosenInd`: comma separated indices of individuals to analyze (default: analyzes all individuals)
+* `nameFile`: file with names of all the individuals in the genotype likelihoods file (default: names are ind1, ind2, ...). For example
+```
+Cryptococcus
+Streptococcus
+```
+will be used as names for the first and the second individual of the input file. This will work if the genotype likelihood files have the same number of individuals.
+* `chosenInd`: comma separated indices of individuals to analyze (default: analyzes all individuals). For example 
+`chosenInd=1,2,7` to choose the first, second and seventh individual.
 * `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default `0,1` = keep all data)
-* `minInd`: min number of individuals with data for which a locus is usedconsider loci (default 1)
+* `minInd`: min number of individuals with data for which a locus is considered in the analysis (default 1)
 * `eps`: sequencing/mapping error rate (default 0.0005)
 
 Note: 
