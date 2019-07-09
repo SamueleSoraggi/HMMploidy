@@ -5,43 +5,6 @@ Calculating its allele frequencies and genotype likelihoods requires to download
 * python 3, with packages `gzip, numpy, scipy, statistics`
 * R, with packages `pracma, data.table, Rcpp, getopt`
 
-## Calculate genotype likelihoods from mpileup files
-
-Overview: calculate genotype likelihoods
-
-`Genotype_Likelihoods.py names.filelist`
-
-takes in input the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension), for example:
-
-```
-file1
-file2
-file3
-```
-
-for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
-
-### Options
-
-* `-o` or `--outFolder`: Output folder. Default: the folder of each input files
-* `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
-* `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in (0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
-* `-m` or `--min_non_major_freq`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
-* `-M2` or `--max_minor2_freq`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
-* `-M3` or `--max_minor3_freq`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
-* `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
-* `-dpInd` or `--min_ind_depth`: Set the minimum depth of a base for each sample to included those in the calculations. A locus is not considered if one or more samples have depth lower than the minimum. Default: `0`.
-
-### Output
-
-A `.genolikes.gz` file for each prefix in the input file. The columns of the file represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
-
-### Syntax Example
-
-```Shell
-python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 -0.1 -dp 5
-```
-
 ## Simulation of polyploid data
 
 Overview: simulate poliploidy organisms and output them in an `mpileup.gz` format
@@ -80,6 +43,43 @@ with the file `ploidy.file` containing
 ```
 
 The output will consists of two files: `outFile.DP10.mpileup.gz` and `outFile.DP20.mpileup.gz`
+
+## Calculate genotype likelihoods from mpileup files
+
+Overview: calculate genotype likelihoods
+
+`Genotype_Likelihoods.py names.filelist`
+
+takes in input the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension), for example:
+
+```
+file1
+file2
+file3
+```
+
+for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
+
+### Options
+
+* `-o` or `--outFolder`: Output folder. Default: the folder of each input files
+* `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
+* `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in (0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
+* `-m` or `--min_non_major_freq`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
+* `-M2` or `--max_minor2_freq`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `-M3` or `--max_minor3_freq`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
+* `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
+* `-dpInd` or `--min_ind_depth`: Set the minimum depth of a base for each sample to included those in the calculations. A locus is not considered if one or more samples have depth lower than the minimum. Default: `0`.
+
+### Output
+
+A `.genolikes.gz` file for each prefix in the input file. The columns of the file represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
+
+### Syntax Example
+
+```Shell
+python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 -0.1 -dp 5
+```
 
 ## Inference of ploidy levels
 
