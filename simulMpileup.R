@@ -1,4 +1,3 @@
-
 # simulate mpileup file with different ploidy 1-5, assuming only 2 alleles and genotype frequencies defined by K and Ne and F
 
 # assume, population allele frequencies drawn from an exponential distribution
@@ -23,8 +22,8 @@ spec=matrix(c(
 	      'pool', 'p', 0, "logical", "enable pool data",
 	      'help', 'h', 0, "logical", "print help message",
 	      'verbose', 'v', 0, "logical", "verbose creates log file",
-              'offset', 'f', 0, "integer", "offset value for genomic position",
-              'seed','u', 2, "integer", "random seed for simulations reproducibility [default 180218]"
+          'offset', 'f', 0, "integer", "offset value for genomic position",
+          'seed','u', 2, "integer", "random seed for simulations reproducibility [default 180218]"
 	      ), byrow=TRUE, ncol=5)
 opt <- getopt(spec)
 

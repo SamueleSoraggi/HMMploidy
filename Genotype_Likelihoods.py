@@ -28,7 +28,7 @@ ploidy = [1,2,3,4,5,6]
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files for use in analysis to be used")
+parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files, mpileup files of bam files to be used in analysis")
 parser.add_argument("-ft","--fileType",help="file type of the input file, mpileup.gz or bam")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
 # parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
@@ -76,15 +76,22 @@ with open(input,'rb') as f:
     for line in f:
         line = line.decode().strip('\n') # Convert bytes into strings
         if line.endswith(".bam"):
-            if fileType != 0 and fileType != 1:
-                sys.exit(fileType " and b ###################################.")
-            fileType = "bam"
+            if fileType != 1:
+                if fileType != 0: # If it is no the first line
+                    sys.exit("Error in file " + line + ". Input file should contain files from the same file type.")
+            fileType = 1 # bam
             list_of_inputs.append(line)
         elif line.endswith(".mpileup"):
-            fileType = "mpileup"
+            if fileType != 2:
+                if fileType != 0:
+                    sys.exit("Error in file " + line + ". Input file should contain files from the same file type.")
+            fileType = 2 # mpileup
             list_of_inputs.append(line)
         elif line.endswith(".mpileup.gz"):
-            fileType = "mpileup.gz"
+            if fileType != 3:
+                if fileType != 0:
+                    sys.exit("Error in file " + line + ". Input file should contain files from the same file type.")
+            fileType = 3 # mpileup.gz
             list_of_inputs.append(line)
         else:
             sys.exit(line + " file is not supported. Supported file types are '.mpileup', '.mpileup.gz' and '.bam'.")
@@ -92,21 +99,17 @@ with open(input,'rb') as f:
     print('%d files found' %Nfiles)
     print(list_of_inputs)
 
-fileType = args.fileType
-
-
-
 outFolder = args.outFolder
 for g1 in list_of_inputs: # Output files names
     directory = '/'.join(g1.split('/')[:-1])
     if len(directory) == 0:
-        g="./" + g1 + "." + fileType
+        g="./" + g1 + "." + fileTypes[fileType]
         if outFolder==0:
             output = "./"+g1+".genolikes.gz"
         else:
             output = outFolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
     else:
-        g=g1 + "." + fileType
+        g=g1 + "." + fileTypes[fileType]
         if outFolder==0:
             output = g1+".genolikes.gz"
         else:
@@ -287,34 +290,36 @@ for g1 in list_of_inputs: # Output files names
                                 #find sample depth of filtered data    
                                 sampleDepth = len(myReads.base)
                                 p=[] # list to fill with probabilities for this base
+                                
+                                ploid = generics.calcGenoLogLike1_MajorMinor(ploidy, myReads, major, minor)
 
-                                if 1 in ploidy:
-                                    haploid = generics.calcGenoLogLike1_MajorMinor(myReads,mySite,major,minor)
+                              #  if 1 in ploidy:
+                               #     haploid = generics.calcGenoLogLike1_MajorMinor(myReads,mySite,major,minor)
                                     #haploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,haploid,HWE_Prob_hap)))
                                     #p.append(haploid_sum)
 
-                                if 2 in ploidy:
-                                    diploid = generics.calcGenoLogLike2_MajorMinor(myReads,mySite,major,minor)
+                              #  if 2 in ploidy:
+                               #     diploid = generics.calcGenoLogLike2_MajorMinor(myReads,mySite,major,minor)
                                     #diploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,diploid,HWE_Prob_dip)))
                                     #p.append(diploid_sum)
 
-                                if 3 in ploidy:
-                                    triploid = generics.calcGenoLogLike3_MajorMinor(myReads,mySite,major,minor)
+                              #  if 3 in ploidy:
+                               #     triploid = generics.calcGenoLogLike3_MajorMinor(myReads,mySite,major,minor)
                                     #triploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,triploid,HWE_Prob_tri)))
                                     #p.append(triploid_sum)
 
-                                if 4 in ploidy:
-                                    tetraploid = generics.calcGenoLogLike4_MajorMinor(myReads,mySite,major,minor)
+                              #  if 4 in ploidy:
+                               #     tetraploid = generics.calcGenoLogLike4_MajorMinor(myReads,mySite,major,minor)
                                     #tetraploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,tetraploid,HWE_Prob_tetra)))
                                     #p.append(tetraploid_sum)
 
-                                if 5 in ploidy:
-                                    pentaploid = generics.calcGenoLogLike5_MajorMinor(myReads,mySite,major,minor)
+                              #  if 5 in ploidy:
+                               #     pentaploid = generics.calcGenoLogLike5_MajorMinor(myReads,mySite,major,minor)
                                     #pentaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,pentaploid,HWE_Prob_pent)))
                                     #p.append(pentaploid_sum)
 
-                                if 6 in ploidy:
-                                    hexaploid = generics.calcGenoLogLike6_MajorMinor(myReads,mySite,major,minor)
+                              #  if 6 in ploidy:
+                               #     hexaploid = generics.calcGenoLogLike6_MajorMinor(myReads,mySite,major,minor)
                                     #hexaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,hexaploid,HWE_Prob_hex)))
                                     #p.append(hexaploid_sum)
 
@@ -352,5 +357,3 @@ for g1 in list_of_inputs: # Output files names
                             # end for sample
                     #end if not filtered for global depth
                 #end for line   
-
-
