@@ -8,7 +8,7 @@ pascalGet <- function(h) {
     print(s)
   }
 }
-)
+
 
 binomialCoefficents <- function(ploidy) {
   coef = c()   # Initial vector of binomial coefficents
@@ -22,18 +22,44 @@ pqPowers <- function(ploidy) {
   ppow = c()   # Initial vector of pp powers
   for (i in ploidy:0) { ppow = c(ppow, i) }
   qpow = rev(ppow)
-  pow = list(ppow, qpow)
+  pow = c(ppow, qpow)
   return(pow)
 }
 
+pqPowers(1)
 
 hwe <- function(ploidy) { # Hardy Weinberg Equilibrium genotype probs
   pq = c(pp, qq)
   pqPowers(ploidy)
   for (i in 1:ploidy) {
-  priors <- c(pq[1]^ ,pq[2])
+  priors <- c(pq[1] ,pq[2])
   }
 }
+
+ploidy = 1
+
+pp = 1
+qq = 2
+
+pq <- c(pp,qq)
+
+a = character(0)
+x = character(length=ploidy)
+
+for (i1 in 2:(ploidy+1)){
+  for (i2 in pq){
+    a = paste(a, i2)
+  }
+} 
+
+a
+x
+
+eval(parse(text = paste(paste("priors <- c(", paste(pq, collapse=",") ),")")))
+
+a[1][1]
+pp = 1
+qq = 0
 
 hwe(3)
 
@@ -44,3 +70,4 @@ rev(a)
 for (i in 1:10) { x <- c(0, x) + c(x, 0); print(x) }
 
 choose(3,3)
+

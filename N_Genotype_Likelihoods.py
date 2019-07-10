@@ -9,6 +9,7 @@ import scipy.stats
 import random
 from statistics import mode
 import argparse
+import calcploidy
 
 class Site:
     def __init__(self,chrom,position,reference):
@@ -21,13 +22,14 @@ class Reads:
         self.base = str(base)
         self.base_quality = str(base_quality)
 
+
 alleles = ['A','C','G','T']
 
 ploidy = [1,2,3,4,5,6]
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files, mpileup files of bam files to be used in analysis")
-parser.add_argument("-ft","--fileType",help="file type of the input file, mpileup.gz or bam")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
 # parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--downsampling",help="Fraction of data to be used in the calculations",default=1)
@@ -41,8 +43,8 @@ args = parser.parse_args()
 
 
 input = args.input # Input file in form of mpileup, gzipped mpileup or bam
+
 list_of_inputs=[]
-fileType = 0 # initial file type
 
 fileTypes = {
         1:"bam",
@@ -50,6 +52,7 @@ fileTypes = {
         3:"mpileup.gz"
         }
 
+fileType = 0 # initial file type
 
 with open(input,'rb') as f:
     for line in f:
@@ -78,31 +81,21 @@ with open(input,'rb') as f:
     print('%d files found' %Nfiles)
     print(list_of_inputs)
 
-extensionLen = {
-        1:4,
-        2:8,
-        3:10
-        }
-
-exl = extensionLen[fileType]
-
 outFolder = args.outFolder
 for g1 in list_of_inputs: # Output files names
     directory = '/'.join(g1.split('/')[:-1])
     if len(directory) == 0:
-        g = "./" + g1
-        g2 = g1[:exl]
+        g="./" + g1 + "." + fileTypes[fileType]
         if outFolder==0:
-            output = "./"+g2+".genolikes.gz"
+            output = "./"+g1+".genolikes.gz"
         else:
-            output = outFolder+'/'.join(g2.split('/')[-1])+".genolikes.gz"
+            output = outFolder+'/'.join(g1.split('/')[-1])+".genolikes.gz"
     else:
-        g = g1
-        g2 = g1[:exl]
+        g=g1 + "." + fileTypes[fileType]
         if outFolder==0:
-            output = g2+".genolikes.gz"
+            output = g1+".genolikes.gz"
         else:
-            output = outFolder+"/"+g2+".genolikes.gz"
+            output = outFolder+"/"+g1.split('/')[-1]+".genolikes.gz"
     print(output)      
 
 ##### gzipped mpileup
@@ -279,8 +272,12 @@ for g1 in list_of_inputs: # Output files names
                                 #find sample depth of filtered data    
                                 sampleDepth = len(myReads.base)
                                 p=[] # list to fill with probabilities for this base
+                               
+
+
+                                for i in ploidy:
+                                    ploid = calcploidy.calcGenoLogLikeN_MajorMinor(i, ploidy, myReads, major, minor)
                                 
-                                ploid = generics.calcGenoLogLike1_MajorMinor(ploidy, myReads, major, minor)
 
                               #  if 1 in ploidy:
                                #     haploid = generics.calcGenoLogLike1_MajorMinor(myReads,mySite,major,minor)
@@ -334,7 +331,9 @@ for g1 in list_of_inputs: # Output files names
 
                                 # Write file of genotype likelihoods
                                 sep="\t"
-                                content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,haploid)),"\t".join(map(str,diploid)),"\t".join(map(str,triploid)),"\t".join(map(str,tetraploid)),"\t".join(map(str,pentaploid)),"\t".join(map(str,hexaploid)))
+                               # content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,haploid)),"\t".join(map(str,diploid)),"\t".join(map(str,triploid)),"\t".join(map(str,tetraploid)),"\t".join(map(str,pentaploid)),"\t".join(map(str,hexaploid)))
+                                content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count),"\t".join(map(str,ploid)))
+
                                 content=sep.join(content)
                                 content=content+"\n"
                                 with gzip.open(output,'at+') as f: 
