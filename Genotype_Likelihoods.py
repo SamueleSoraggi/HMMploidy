@@ -87,7 +87,11 @@ for g1 in list_of_inputs: #output files names
     temp=inbreed.split(',')
     for t in temp:
         vals=t.split('x')
-        F+=list(np.repeat(float(vals[0]),int(vals[1])))
+        if len(vals)==2:
+            F+=list(np.repeat(float(vals[0]),int(vals[1])))
+        else:
+            F+=[vals[0]]
+    print(F)
     downsampling=float(args.downsampling) # fraction of data to be used (0-1]. 
     Original_sample_number=NSAMS
     win=50 # window size for calculating ploidy
@@ -102,7 +106,7 @@ for g1 in list_of_inputs: #output files names
     base_number=0 # count for bases
     list_of_window=[] 
     list_of_window2=[]
-    gzip.open(output,'wt') 
+    #gzip.open(output,'wt') 
 
     no_bases=0
     total_bases=0
