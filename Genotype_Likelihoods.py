@@ -104,15 +104,25 @@ for g1 in list_of_inputs: # Output files names
         else:
             output = outFolder+"/"+g2+".genolikes.gz"
     print(output)      
-    if fileType == 1:
+    if fileType == 1: # bam file
         for alignment in pybam.read(bam_file):
             print("bam???")
             # myReads = Reads("","")
             # bases = alignment.sam_seq
             # qualities = alignment.sam_qual
-    elif fileType == 2:
+        #NSAMS = ##
+        if args.Inbreeding:
+            inbreed = args.Inbreeding
+        else:
+            inbreed = "0x{}".format(str(NSAMS))
+    elif fileType == 2: # mpilup file
         print("no gz")
-    elif fileType == 3:
+        #NSAMS = ###
+        if args.Inbreeding:
+            inbreed = args.Inbreeding
+        else:
+            inbreed = "0x{}".format(str(NSAMS))
+    elif fileType == 3: # mpileup.gz file
         with gzip.open(g) as f:
             first_line = f.readline()
             Data=first_line.decode().strip('\n') # Convert bytes into string
@@ -225,10 +235,8 @@ for g1 in list_of_inputs: # Output files names
                             elif myReads.base[read]==alleles[minor]:
                                 Q_bar+=(1-(10**((phredscale-ord(str(myReads.base_quality[read])))/10)))
 
-
                         P = P_bar/(P_bar+Q_bar) #proportion of major allele weigted by read quality
                         Q = Q_bar/(P_bar+Q_bar) #proportion of minor allele weigted by read quality
-
 
                         base_number+=1 # Count number of SNPs included in data
                         for n in range(NSAMS):
@@ -238,16 +246,6 @@ for g1 in list_of_inputs: # Output files names
                             myReads = Reads(l[(n-1)*3+4],l[(n-1)*3+5])
                             (bases, indexDelN) = generics.convertSyms(myReads,mySite)
                             myReads = Reads(bases, myReads.base_quality)
-
-                            #establish prior probabilities
-                            #HWE_Prob_hap = [P,Q]
-                            #HWE_Prob_dip = [(1-F[n-1])*(P**2)+F[n-1]*P,(1-F[n-1])*2*P*Q,(1-F[n-1])*(Q**2)+F[n-1]*Q]
-                            #HWE_Prob_tri = [(1-F[n-1])*(P**3)+F[n-1]*P,(1-F[n-1])*3*(P**2)*Q,(1-F[n-1])*3*P*(Q**2),(1-F[n-1])*(Q**3)+F[n-1]*Q]
-                            #HWE_Prob_tetra = [(1-F[n-1])*(P**4)+F[n-1]*P,(1-F[n-1])*4*(P**3)*Q,(1-F[n-1])*6*(P**2)*(Q**2),(1-F[n-1])*4*P*(Q**3),(1-F[n-1])*(Q**4)+F[n-1]*Q]
-                            #HWE_Prob_pent = [(1-F[n-1])*(P**5)+F[n-1]*P,(1-F[n-1])*5*(P**4)*Q,(1-F[n-1])*10*(P**3)*(Q**2),(1-F[n-1])*10*(P**2)*(Q**3),(1-F[n-1])*5*P*(Q**4),(1-F[n-1])*(Q**5)+F[n-1]*Q]
-                            #HWE_Prob_hex = [(1-F[n-1])*(P**6)+F[n-1]*P,(1-F[n-1])*6*(P**5)*Q,(1-F[n-1])*15*(P**4)*(Q**2),(1-F[n-1])*20*(P**3)*(Q**3),(1-F[n-1])*15*(P**2)*(Q**4),(1-F[n-1])*6*P*(Q**5),(1-F[n-1])*(Q**6)+F[n-1]*Q]
-                            #HWE_Prob_hept = [(1-F[n-1])*(P**7)+F[n-1]*P,(1-F[n-1])*7*(P**6)*Q,(1-F[n-1])*21*(P**5)*(Q**2),(1-F[n-1])*35*(P**4)*(Q**3),(1-F[n-1])*35*(P**3)*(Q**4),(1-F[n-1])*21*(P**2)*(Q**5),(1-F[n-1])*7*P*(Q**6),(1-F[n-1])*(Q**7)+F[n-1]*Q]
-                            #HWE_Prob_oct = [(1-F[n-1])*(P**8)+F[n-1]*P,(1-F[n-1])*8*(P**7)*Q,(1-F[n-1])*28*(P**6)*(Q**2),(1-F[n-1])*56*(P**5)*(Q**3),(1-F[n-1])*70*(P**4)*(Q**4),(1-F[n-1])*56*(P**3)*(Q**5),(1-F[n-1])*28*(P**2)*(Q**6),(1-F[n-1])*8*P*(Q**7),(1-F[n-1])*(Q**8)+F[n-1]*Q]
 
                             #filter by quality
                             [bases,qualities] = generics.filter(myReads,args.min_quality_score)
@@ -280,59 +278,12 @@ for g1 in list_of_inputs: # Output files names
                                 myReads=Reads(base,qualities)
                             #find sample depth of filtered data    
                             sampleDepth = len(myReads.base)
-                            #p=[] # list to fill with probabilities for this base
-                            #if 1 in ploidy:
-                             #   haploid = generics.calcGenoLogLike1_MajorMinor(myReads,mySite,major,minor)
-                                #haploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,haploid,HWE_Prob_hap)))
-                                #p.append(haploid_sum)
-
-                            #if 2 in ploidy:
-                            #    diploid = generics.calcGenoLogLike2_MajorMinor(myReads,mySite,major,minor)
-                                #diploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,diploid,HWE_Prob_dip)))
-                                #p.append(diploid_sum)
-
-                            #if 3 in ploidy:
-                             #   triploid = generics.calcGenoLogLike3_MajorMinor(myReads,mySite,major,minor)
-                                #triploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,triploid,HWE_Prob_tri)))
-                                #p.append(triploid_sum)
-
-                            #if 4 in ploidy:
-                             #   tetraploid = generics.calcGenoLogLike4_MajorMinor(myReads,mySite,major,minor)
-                                #tetraploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,tetraploid,HWE_Prob_tetra)))
-                                #p.append(tetraploid_sum)
-
-                           # if 5 in ploidy:
-                            #    pentaploid = generics.calcGenoLogLike5_MajorMinor(myReads,mySite,major,minor)
-                                #pentaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,pentaploid,HWE_Prob_pent)))
-                                #p.append(pentaploid_sum)
-
-                           # if 6 in ploidy:
-                            #    hexaploid = generics.calcGenoLogLike6_MajorMinor(myReads,mySite,major,minor)
-                                #hexaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,hexaploid,HWE_Prob_hex)))
-                                #p.append(hexaploid_sum)
-
-                            #if 7 in ploidy:
-                                #heptaploid = generics.calcGenoLogLike7_MajorMinor(myReads,mySite,major,minor)
-                                #heptaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,heptaploid,HWE_Prob_hept)))
-                                #p.append(heptaploid_sum)
-
-                            #if 8 in ploidy:
-                                #octaploid = generics.calcGenoLogLike8_MajorMinor(myReads,mySite,major,minor)
-                                #octaploid_sum = generics.log_or_zero(sum(map(lambda x,y: generics.exp_or_zero(x)*y,octaploid,HWE_Prob_oct)))
-                                #p.append(octaploid_sum)
-
-
-
                             #Overall_Prob_HWE[0]+=p # Add probabilities to overall counter
                             NUMSITES[0]+=sampleDepth # count the number of reads for each sample
-
                             #Overall_Prob_HWE[n]+=p # Add probabilities and depths to sample-wise counter
                             NUMSITES[n]+=sampleDepth 
-
                             sep="\t"
-                            
                             content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count))
-                            
                             content=sep.join(content)
                             content+="\t"
 
@@ -341,7 +292,6 @@ for g1 in list_of_inputs: # Output files names
                                 content2 ="\t".join(map(str,Nploid))
                                 content += content2
                                 content += "\t"
-                            
                             content += "\n"
 
                             # Write file of genotype likelihoods
