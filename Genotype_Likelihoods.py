@@ -38,7 +38,7 @@ parser.add_argument("-M2","--max_minor2_freq",type=float,help="Set the maximum f
 parser.add_argument("-M3","--max_minor3_freq",type=float,help="Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations",default=0.1)
 args = parser.parse_args()
 
-input = args.input # Input file in form of mpileup, gzipped mpileup or bam
+input = args.input # input file in form of mpileup, gzipped mpileup or bam
 list_of_inputs=[]
 fileType = 0 # initial file type
 
@@ -50,10 +50,10 @@ fileTypes = {
 
 with open(input,'rb') as f:
     for line in f:
-        line = line.decode().strip('\n') # Convert bytes into strings
+        line = line.decode().strip('\n') # convert bytes into strings
         if line.endswith(".bam"):
             if fileType != 1:
-                if fileType != 0: # If it is no the first line
+                if fileType != 0: # if it is no the first line
                     sys.exit("Error in file " + line + ". Input file should contain files from the same file type.")
             fileType = 1 # bam
             list_of_inputs.append(line)
@@ -84,7 +84,7 @@ extensionLen = {
 exl = extensionLen[fileType] # extension length of fileType including dots
 
 outFolder = args.outFolder
-for g1 in list_of_inputs: # Output files names
+for g1 in list_of_inputs: # get output files' names from input files' names
     directory = '/'.join(g1.split('/')[:-1])
     if len(directory) == 0:
         g = "./" + g1
@@ -108,29 +108,20 @@ for g1 in list_of_inputs: # Output files names
             # bases = alignment.sam_seq
             # qualities = alignment.sam_qual
         #NSAMS = ##
-        if args.Inbreeding:
-            inbreed = args.Inbreeding
-        else:
-            inbreed = "0x{}".format(str(NSAMS))
     elif fileType == 2: # mpilup file
         print("no gz")
         #NSAMS = ###
-        if args.Inbreeding:
-            inbreed = args.Inbreeding
-        else:
-            inbreed = "0x{}".format(str(NSAMS))
     elif fileType == 3: # mpileup.gz file
         with gzip.open(g) as f:
             first_line = f.readline()
             Data=first_line.decode().strip('\n') # Convert bytes into string
             l = Data.split('\t')
         NSAMS=int((len(l)-3)/3)
-        if args.Inbreeding:
-            inbreed = args.Inbreeding
-        else:
-            inbreed = "0x{}".format(str(NSAMS))
-
-    #parse inbreeding coeffients
+    if args.Inbreeding:
+        inbreed = args.Inbreeding
+    else:
+        inbreed = "0x{}".format(str(NSAMS))
+    # parse inbreeding coeffients
     F=[]
     temp=inbreed.split(',')
     for t in temp:
@@ -150,21 +141,16 @@ for g1 in list_of_inputs: # Output files names
     Overall_Prob=np.zeros((NSAMS+1,len(ploidy)),float) # (NSAMS+1)xploidies array for probabilities of each ploidy for each sample and overall ploidy probabilities
     Overall_Prob_HWE=np.zeros((NSAMS+1,len(ploidy)),float)
     delta_prob=np.zeros((NSAMS+1,len(ploidy)),float)
-    counts=np.zeros((NSAMS+1,len(ploidy)),float)+1 # Counts of bases for each ploidy being most likely
+    counts=np.zeros((NSAMS+1,len(ploidy)),float)+1 # counts of bases for each ploidy being most likely
     base_number=0 # count for bases
     list_of_window=[]
     list_of_window2=[]
-    #gzip.open(output,'wt')
-
     no_bases=0
     total_bases=0
     with gzip.open(g,'rb') as gz:# opens the mpilup. Use mpileup.read() to display content
         for line in gz:
-            Data=line.decode().strip('\n')# Convert bytes into string
+            Data=line.decode().strip('\n')# convert bytes into string
             l = Data.split('\t')
-            #if((NSAMS)!=int((len(l)-3)/3)):
-            #    sys.exit("Number of samples does not match the mpileup (%s)"%((len(l)-3)/3))
-
             mySite = Site(str(l[0]),int(l[1]),str(l[2]))
             myReads = Reads("","")
 
@@ -182,20 +168,20 @@ for g1 in list_of_inputs: # Output files names
             myReads=Reads(bases,myReads.base_quality)
             if len(myReads.base)!=len(myReads.base_quality):
                 sys.exit("Conversion not succesful")
-            #filter by quality
+            # filter by quality
             [bases,qualities] = generics.filter(myReads,args.min_quality_score)
             myReads=Reads(bases,qualities)
 
-            #find all indexes of occurances to be filtered out
+            # find all indexes of occurances to be filtered out
             index_of_X=[]
             index=-1
             while True:
                     index=myReads.base.find('X',index+1)
                     if index == -1:
-                        break  # All occurrences have been found
+                        break  # all occurrences have been found
                     index_of_X.append(index)
             myReads.base=myReads.base.replace('X','')
-            #Remove all corresponding base qualities
+            # remove all corresponding base qualities
             count=0
             for i in index_of_X:
                 myReads.base_quality = myReads.base_quality[:i-count] + myReads.base_quality[i+1-count:]
@@ -206,10 +192,10 @@ for g1 in list_of_inputs: # Output files names
             if ((globalDepth > args.min_global_depth) & (min(individualDepth)>args.min_ind_depth)):
                 total_bases+=globalDepth
                 no_bases+=1
-                #counts of non-major bases
+                # counts of non-major bases
                 nonMajorCount = generics.calcNonMajorCounts(myReads)
                 nonMajorProp = nonMajorCount/len(myReads.base)
-                #filter the site based on global depth
+                # filter the site based on global depth
                 Set_min_prop = args.min_non_major_freq # minimum proportion of nonMajorCount
                 if nonMajorProp>Set_min_prop: # remove bases where more that 1-Set_min_prop are major allele i.e monomorphic bases
                     prob_of_ancestral_allelle_maj=1-nonMajorProp
@@ -217,9 +203,9 @@ for g1 in list_of_inputs: # Output files names
                     haploid = generics.calcGenoLogLike1(myReads,mySite)
                     tri_ref = haploid[4] # retrieve reference value for if the base is not triallilic
                     haploid=haploid[:4] # remove reference value
-                    # Keep reference allele as one possible allele so always assume KeepRef=0
+                    # keep reference allele as one possible allele so always assume KeepRef=0
                     [major,minor,minor2,minor3] = [haploid.index(sorted(haploid,reverse=True)[0]),haploid.index(sorted(haploid,reverse=True)[1]),haploid.index(sorted(haploid,reverse=True)[2]),haploid.index(sorted(haploid,reverse=True)[3])]
-                    #remove sites with >0.1 frequency of minor 2 or minor 3 allele to remove non biallilic sites (0.1 error built in for sequencing error)
+                    # remove sites with >0.1 frequency of minor 2 or minor 3 allele to remove non biallilic sites (0.1 error built in for sequencing error)
                     minor2_prop=generics.calcAlleleFreq(minor2,myReads)/len(myReads.base) # Calculate allele frequencies of minor2&3 alleles
                     minor3_prop=generics.calcAlleleFreq(minor3,myReads)/len(myReads.base)
 
@@ -232,38 +218,38 @@ for g1 in list_of_inputs: # Output files names
                             elif myReads.base[read]==alleles[minor]:
                                 Q_bar+=(1-(10**((phredscale-ord(str(myReads.base_quality[read])))/10)))
 
-                        P = P_bar/(P_bar+Q_bar) #proportion of major allele weigted by read quality
-                        Q = Q_bar/(P_bar+Q_bar) #proportion of minor allele weigted by read quality
+                        P = P_bar/(P_bar+Q_bar) # proportion of major allele weigted by read quality
+                        Q = Q_bar/(P_bar+Q_bar) # proportion of minor allele weigted by read quality
 
-                        base_number+=1 # Count number of SNPs included in data
+                        base_number+=1 # count number of SNPs included in data
                         for n in range(NSAMS):
 
-                            #retrieve bases for this particular sample
+                            # retrieve bases for this particular sample
                             n=n+1
                             myReads = Reads(l[(n-1)*3+4],l[(n-1)*3+5])
                             (bases, indexDelN) = generics.convertSyms(myReads,mySite)
                             myReads = Reads(bases, myReads.base_quality)
 
-                            #filter by quality
+                            # filter by quality
                             [bases,qualities] = generics.filter(myReads,args.min_quality_score)
                             myReads=Reads(bases,qualities)
-                            #find all indexes of occurances to be filtered out
+                            # find all indexes of occurances to be filtered out
                             index_of_X=[]
                             index=-1
                             while True:
                                     index=myReads.base.find('X',index+1)
                                     if index == -1:
-                                        break  # All occurrences have been found
+                                        break  # all occurrences have been found
                                     index_of_X.append(index)
                             myReads.base=myReads.base.replace('X','')
-                            #Remove all corresponding base qualities
+                            # remove all corresponding base qualities
                             count=0
                             for i in index_of_X:
                                 myReads.base_quality = myReads.base_quality[:i-count] + myReads.base_quality[i+1-count:]
                                 count+=1
                             major_count=generics.calcAlleleFreq(major,myReads)
                             minor_count=generics.calcAlleleFreq(minor,myReads)
-                            # Take a sample of the bases so that the proportion of data used is as required
+                            # take a sample of the bases so that the proportion of data used is as required
                             if downsampling<1:
                                 data_prop = math.ceil(len(myReads.base)*downsampling) # calculate how many bases to include for proportion of sample
                                 rand_samp = random.sample(range(0,len(myReads.base)),data_prop)
@@ -273,13 +259,12 @@ for g1 in list_of_inputs: # Output files names
                                     base+=myReads.base[r]
                                     qualities+=myReads.base_quality[r]
                                 myReads=Reads(base,qualities)
-                            #find sample depth of filtered data
+                            # find sample depth of filtered data
                             sampleDepth = len(myReads.base)
-                            #Overall_Prob_HWE[0]+=p # Add probabilities to overall counter
                             NUMSITES[0]+=sampleDepth # count the number of reads for each sample
-                            #Overall_Prob_HWE[n]+=p # Add probabilities and depths to sample-wise counter
                             NUMSITES[n]+=sampleDepth
                             sep="\t"
+                            content=""
                             content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count))
                             content=sep.join(content)
                             content+="\t"
@@ -291,15 +276,12 @@ for g1 in list_of_inputs: # Output files names
                                 content += "\t"
                             content += "\n"
 
-                            # Write file of genotype likelihoods
+                            # write file of genotype likelihoods
                             with gzip.open(output,'at+') as f:
                                 f.write(content)
-                            content="" # clear content variable
 
-                            #end likelihood calc
+                            # end likelihood calc
                         # end for sample
                     # end for if max minor
-                #    else:
-                #        print("Error")
                 # end if not filtered for global depth
             # end for line
