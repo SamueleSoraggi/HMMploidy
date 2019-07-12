@@ -470,10 +470,49 @@ def filter(reads,min_quality_score):
     phredScale=33
     bases=""
     qualities=""
-    reads_count=len(reads.base)
-    for i in range(0,reads_count):
+    for i in range(0,len(reads.base)):
         if ord(reads.base_quality[i])-phredScale>min_quality_score:
             bases+=reads.base[i]
             qualities+=reads.base_quality[i]
     return(bases,qualities)
+
+
+def combinations_with_rep(iterable, r): # combinations with replacements, edited function from itertools
+    pool = list(iterable)
+    n = len(pool)
+    if not n and r:
+        return
+    indices = [0] * r
+    yield list(pool[i] for i in indices)
+    while True:
+        for i in reversed(range(r)):
+            if indices[i] != n - 1:
+                break
+        else:
+            return
+        indices[i:] = [indices[i] + 1] * (r - i)
+        yield list(pool[i] for i in indices)
+
+def calcGenoLogLikeN_MajorMinor(N,read,site,major,minor):
+    alleles = ['A','C','G','T']
+    log_likes=[0.0]*(N+1)
+    it = -1
+    phredScale=33
+    mm = [major,minor]
+    mmList = list(combinations_with_rep(mm,N)) # List of major minor combinations
+    # cycle across all possible genotypes
+    readLen = len(read.base)
+    for subList in mmList:
+        it += 1
+        for i in range(readLen):
+            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
+            sublike = 0.0
+            for item in subList:
+                if alleles[item] == read.base[i]:
+                    sublike += (1-bP)/N
+                else:
+                    sublike += (bP/3)/N
+            log_likes[it] += math.log(sublike)
+    return(log_likes)
+
 

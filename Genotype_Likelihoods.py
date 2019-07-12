@@ -118,10 +118,13 @@ for g1 in list_of_inputs: # Output files names
             Data=first_line.decode().strip('\n') # Convert bytes into string
             l = Data.split('\t')
         NSAMS=int((len(l)-3)/3)
-        # if args.Inbreeding:
-        #     inbreed = args.Inbreeding
-        # else:
-        #    inbreed = "0x{}".format(str(NSAMS))
+         if args.Inbreeding:
+             inbreed = args.Inbreeding
+         else:
+            inbreed = "0x{}".format(str(NSAMS))
+
+
+
 
         #parse inbreeding coeffients
       #  F=[]
