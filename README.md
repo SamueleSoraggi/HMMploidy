@@ -76,7 +76,7 @@ A `.genolikes.gz` file for each prefix in the input file. The columns of the fil
 ### Syntax Example
 
 ```Shell
-python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 -0.1 -dp 5
+python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5
 ```
 
 ## Inference of ploidy levels
@@ -111,7 +111,7 @@ will be used as names for the first and the second individual of the input file.
 Note: 
 
 * if working on simulations, the list of basenames is already given in output by the simulation script.
-* the `.genolikes.gz` files given in output by the `Geotype_Likelihoods.py` script must be gunzipped.
+* the `.genolikes.gz` files given in output by the `Genotype_Likelihoods.py` script must be gunzipped.
 
 ### Output
 
@@ -133,11 +133,11 @@ For each base name, there are two outputs:
 
 ## Application Example: Analyze ploidy numbers from simulations
 
-Simulate 5 genomes ina  file called `poliploidyGenome`, with 4 segments having ploidy numbers 2-5-4-2 for all genomes, and simulating two different haploid depths, 3X and 8X. Consider `1000` simulated loci for each segment. Let `SCRIPTPATH` be the folder containing the scripts of this repository.
+Simulate 5 genomes ina  file called `poliploidyGenome`, with 4 segments having ploidy numbers 2-5-4-2 for all genomes, and simulating two different haploid depths, 3X and 8X. Consider `1000` simulated loci for each segment. Let `SOFTWAREPATHPATH` be the folder containing the scripts of this repository.
 
 Simulate the dataset
 ```Shell
-$SCRIPTPATH/simulationScript.sh -p ploidy.file -d 3,8 -l 1000,1000,1000,1000 -o poliploidyGenome
+$SOFTWAREPATHPATH/simulationScript.sh -p ploidy.file -d 3,8 -l 1000,1000,1000,1000 -o poliploidyGenome
 ```
 
 with the file `ploidy.file` containing:
@@ -152,13 +152,13 @@ There are two simulated `.mpileup.gz` files in output: `poliploidyGenome.DP3.mpi
 
 Calculate genotype likelihoods without applying any filter (see the script options for filtering details):
 ```Shell
-python3 $SCRIPTPATH/Genotype_Likelihoods.py poliploidyGenome.filelist
+python3 $SOFTWAREPATHPATH/Genotype_Likelihoods.py poliploidyGenome.filelist
 ```
 
 Run the analysis of ploidy numbers for the two simulated datasets. Use window size 100, analyze all the individuals, consider the max ploidy number being 5, do not trim the data, and use loci where there is data for >=2 individuals
 ```Shell
 gunzip *.genolikes.gz #the R script needs gunzipped genolikes files
-Rscript $SCRIPTPATH/HMMploidy.R  fileList=poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=2
+Rscript $SOFTWAREPATHPATH/HMMploidy.R  fileList=poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=2
 ```
 
 In output you will find the pdf files `poliploidyGenome.DP4.pdf`,`poliploidyGenome.DP8.pdf` with a fancy plot of the inferred ploidy for each individual and the mean depth of each window. The text output is contained in the files `poliploidyGenome.DP4.HMMploidy`,`poliploidyGenome.DP8.HMMploidy`
