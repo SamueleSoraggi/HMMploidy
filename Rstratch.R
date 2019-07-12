@@ -18,15 +18,26 @@ binomialCoefficents <- function(ploidy) {
 
 binomialCoefficents(3)
 
-pqPowers <- function(ploidy) {
+
+
+
+
+
+pPowers <- function(ploidy) {
   ppow = c()   # Initial vector of pp powers
   for (i in ploidy:0) { ppow = c(ppow, i) }
   qpow = rev(ppow)
-  pow = c(ppow, qpow)
   return(pow)
 }
 
-pqPowers(1)
+qPowers <- function(ploidy) {
+  qpow = rev(ppow)
+  return(pow)
+}
+
+
+
+pqPowers(2)
 
 hwe <- function(ploidy) { # Hardy Weinberg Equilibrium genotype probs
   pq = c(pp, qq)
@@ -35,6 +46,9 @@ hwe <- function(ploidy) { # Hardy Weinberg Equilibrium genotype probs
   priors <- c(pq[1] ,pq[2])
   }
 }
+
+hwe(ploidy)
+priors
 
 ploidy = 1
 
@@ -70,4 +84,13 @@ rev(a)
 for (i in 1:10) { x <- c(0, x) + c(x, 0); print(x) }
 
 choose(3,3)
+
+x = 0.4
+y= 0.6
+polym(c(x,y), degree = 2, raw = TRUE)
+
+# R package 'mpoly' required
+mp()
+mpoly()
+
 
