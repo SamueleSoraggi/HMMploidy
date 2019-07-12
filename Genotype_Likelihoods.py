@@ -4,7 +4,7 @@ import gzip
 import pybam
 import generics
 import numpy as np
-import math 
+import math
 import scipy.stats
 import random
 from statistics import mode
@@ -25,8 +25,6 @@ alleles = ['A','C','G','T']
 
 ploidy = [1,2,3,4,5,6]
 
-random.seed(1)
-
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files for use in analysis to be used")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
@@ -39,7 +37,6 @@ parser.add_argument("-dpInd","--min_ind_depth",type=float,help="Set the minimum 
 parser.add_argument("-M2","--max_minor2_freq",type=float,help="Set the maximum frequency of third most prolific alleles for bases to be included in the calculations",default=0.1)
 parser.add_argument("-M3","--max_minor3_freq",type=float,help="Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations",default=0.1)
 args = parser.parse_args()
-
 
 input = args.input # Input file in form of mpileup, gzipped mpileup or bam
 list_of_inputs=[]
@@ -103,7 +100,7 @@ for g1 in list_of_inputs: # Output files names
             output = g2+".genolikes.gz"
         else:
             output = outFolder+"/"+g2+".genolikes.gz"
-    print(output)      
+    print(output)
     if fileType == 1: # bam file
         for alignment in pybam.read(bam_file):
             print("bam???")
@@ -143,7 +140,7 @@ for g1 in list_of_inputs: # Output files names
         else:
             F+=[vals[0]]
     print(F)
-    downsampling=float(args.downsampling) # fraction of data to be used (0-1]. 
+    downsampling=float(args.downsampling) # fraction of data to be used (0-1].
     Original_sample_number=NSAMS
     win=50 # window size for calculating ploidy
     phredscale=33
@@ -153,11 +150,11 @@ for g1 in list_of_inputs: # Output files names
     Overall_Prob=np.zeros((NSAMS+1,len(ploidy)),float) # (NSAMS+1)xploidies array for probabilities of each ploidy for each sample and overall ploidy probabilities
     Overall_Prob_HWE=np.zeros((NSAMS+1,len(ploidy)),float)
     delta_prob=np.zeros((NSAMS+1,len(ploidy)),float)
-    counts=np.zeros((NSAMS+1,len(ploidy)),float)+1 # Counts of bases for each ploidy being most likely 
+    counts=np.zeros((NSAMS+1,len(ploidy)),float)+1 # Counts of bases for each ploidy being most likely
     base_number=0 # count for bases
-    list_of_window=[] 
+    list_of_window=[]
     list_of_window2=[]
-    #gzip.open(output,'wt') 
+    #gzip.open(output,'wt')
 
     no_bases=0
     total_bases=0
@@ -221,7 +218,7 @@ for g1 in list_of_inputs: # Output files names
                     tri_ref = haploid[4] # retrieve reference value for if the base is not triallilic
                     haploid=haploid[:4] # remove reference value
                     # Keep reference allele as one possible allele so always assume KeepRef=0
-                    [major,minor,minor2,minor3] = [haploid.index(sorted(haploid,reverse=True)[0]),haploid.index(sorted(haploid,reverse=True)[1]),haploid.index(sorted(haploid,reverse=True)[2]),haploid.index(sorted(haploid,reverse=True)[3])] 
+                    [major,minor,minor2,minor3] = [haploid.index(sorted(haploid,reverse=True)[0]),haploid.index(sorted(haploid,reverse=True)[1]),haploid.index(sorted(haploid,reverse=True)[2]),haploid.index(sorted(haploid,reverse=True)[3])]
                     #remove sites with >0.1 frequency of minor 2 or minor 3 allele to remove non biallilic sites (0.1 error built in for sequencing error)
                     minor2_prop=generics.calcAlleleFreq(minor2,myReads)/len(myReads.base) # Calculate allele frequencies of minor2&3 alleles
                     minor3_prop=generics.calcAlleleFreq(minor3,myReads)/len(myReads.base)
@@ -276,12 +273,12 @@ for g1 in list_of_inputs: # Output files names
                                     base+=myReads.base[r]
                                     qualities+=myReads.base_quality[r]
                                 myReads=Reads(base,qualities)
-                            #find sample depth of filtered data    
+                            #find sample depth of filtered data
                             sampleDepth = len(myReads.base)
                             #Overall_Prob_HWE[0]+=p # Add probabilities to overall counter
                             NUMSITES[0]+=sampleDepth # count the number of reads for each sample
                             #Overall_Prob_HWE[n]+=p # Add probabilities and depths to sample-wise counter
-                            NUMSITES[n]+=sampleDepth 
+                            NUMSITES[n]+=sampleDepth
                             sep="\t"
                             content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count))
                             content=sep.join(content)
@@ -295,17 +292,14 @@ for g1 in list_of_inputs: # Output files names
                             content += "\n"
 
                             # Write file of genotype likelihoods
-                            with gzip.open(output,'at+') as f: 
+                            with gzip.open(output,'at+') as f:
                                 f.write(content)
                             content="" # clear content variable
 
                             #end likelihood calc
                         # end for sample
+                    # end for if max minor
                 #    else:
                 #        print("Error")
-                #end if not filtered for global depth
-                #else:
-                #    print("Error")
-            #end for line   
-            #else:
-                #print("Error")
+                # end if not filtered for global depth
+            # end for line

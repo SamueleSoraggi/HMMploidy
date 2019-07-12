@@ -1,4 +1,0 @@
-Nploid <- function(ploidy){
-    
-
-}

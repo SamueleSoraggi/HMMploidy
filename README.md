@@ -13,7 +13,7 @@ Overview: calculate genotype likelihoods
 
 ### Input
 
-* `Input`: name of a text file containing the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension)
+* `Input`: name of a text file containing the prefix of each `.mpileup.gz` file (that is, the name of each file including the `.mpileup.gz` extension)
 
 ### Options
 
