@@ -26,7 +26,7 @@ alleles = ['A','C','G','T']
 ploidy = [1,2,3,4,5,6]
 
 parser = argparse.ArgumentParser()
-parser.add_argument("input",help="file containing the list of basenames for gzipped mpileup files for use in analysis to be used")
+parser.add_argument("input",help="file containing the list of file names for gzipped mpileup files, mpileup files or bam files to be used in analysis")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
 parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--downsampling",help="Fraction of data to be used in the calculations",default=1)
@@ -79,7 +79,10 @@ with open(input,'rb') as filelist:
         else:
             sys.exit(line + " file is not supported. Supported file types are '.mpileup', '.mpileup.gz' and '.bam'.")
     Nfiles=len(list_of_inputs)
-    print('%d files found' %Nfiles)
+    if Nfiles == 1:
+        print('1 file found')
+    else:
+        print('%d files found' %Nfiles)
     print(list_of_inputs)
 print("File type detected: " + fileTypes[fileType])
 
@@ -110,8 +113,9 @@ for g1 in list_of_inputs: # for every filename
     print("Output file is: " + output)
     
     if fileType == 1: # bam file
-        for alignment in pybam.read(bam_file):
-            print("bam")
+        with open(g) as bamf:
+            for alignment in pybam.read(bamf):
+                print(alignment.sam_seq)
             # myReads = Reads("","")
             # bases = alignment.sam_seq
             # qualities = alignment.sam_qual
@@ -287,7 +291,6 @@ for g1 in list_of_inputs: # for every filename
                         # end for if max minor
                     # end if not filtered for global depth
                 # end for line
-
 
     elif fileType == 3: # mpileup.gz file
         with gzip.open(g,'rb') as gz:# opens the mpilup.gz file. Use mpileup.read() to display content
