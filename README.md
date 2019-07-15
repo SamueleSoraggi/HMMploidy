@@ -52,12 +52,13 @@ Overview: calculate genotype likelihoods
 
 ### Input
 
-* the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension), for example:
+* the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file including the `.mpileup.gz` extension), for example:
+
 
 ```
-file1
-file2
-file3
+file1.mpileup.gz
+file2.mpileup.gz
+file3.mpileup.gz
 ```
 for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
 * `-o` or `--outFolder`: Output folder. Default: the folder of each input files
