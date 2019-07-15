@@ -89,7 +89,8 @@ rm -f $FILELIST
 #FIND SOURCE FOLDER OF THE SCRIPTS
 SCRIPTFOLDER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-NLINES=`cat $ploidy | wc -l`
+#NLINES=`cat $ploidy | wc -l` does not count last line if there is not a \n
+NLINES=`grep -c "" $ploidy` 
 echo $NLINES
 
 #generate data for all combinations of parameters (sample and depth)
