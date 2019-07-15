@@ -69,6 +69,7 @@ for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
 * `-M3` or `--max_minor3_freq`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
 * `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
 * `-dpInd` or `--min_ind_depth`: Set the minimum depth of a base for each sample to included those in the calculations. A locus is not considered if one or more samples have depth lower than the minimum. Default: `0`.
+* `-s` or `--random_seed`: Set the random seed to be included in the calculations. If not set, every repeat of analysis will give different results.
 
 ### Output
 
@@ -77,7 +78,7 @@ A `.genolikes.gz` file for each prefix in the input file. The columns of the fil
 ### Syntax Example
 
 ```Shell
-python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5
+python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5 -s 1
 ```
 
 ## Inference of ploidy levels

@@ -36,12 +36,16 @@ parser.add_argument("-dp","--min_global_depth",type=float,help="Set the minimum 
 parser.add_argument("-dpInd","--min_ind_depth",type=float,help="Set the minimum individual depth of a base to be included in calculations",default=0)
 parser.add_argument("-M2","--max_minor2_freq",type=float,help="Set the maximum frequency of third most prolific alleles for bases to be included in the calculations",default=0.1)
 parser.add_argument("-M3","--max_minor3_freq",type=float,help="Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations",default=0.1)
+parser.add_argument("-s","--random_seed",type=int,help="Set the random seed to be included in the calculations")
 args = parser.parse_args()
+
+if args.random_seed:
+    seed = args.random_seed
+    random.seed(seed) # set the seed for calculations using random function
 
 input = args.input # input file in form of mpileup, gzipped mpileup or bam
 list_of_inputs=[]
 fileType = 0 # initial file type
-
 fileTypes = {
         1:"bam",
         2:"mpileup",
