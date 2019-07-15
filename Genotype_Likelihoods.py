@@ -138,7 +138,8 @@ for g1 in list_of_inputs: # get output files' names from input files' names
         else:
             F+=[vals[0]]
     print(F)
-    downsampling=float(args.downsampling) # fraction of data to be used (0-1].
+
+    downsampling=float(args.downsampling) # fraction of data to be used (0-1]. 
     Original_sample_number=NSAMS
     win=50 # window size for calculating ploidy
     phredscale=33

@@ -54,12 +54,12 @@ Overview: calculate genotype likelihoods
 
 * the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file including the `.mpileup.gz` extension), for example:
 
-
 ```
 file1.mpileup.gz
 file2.mpileup.gz
 file3.mpileup.gz
 ```
+
 for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
 * `-o` or `--outFolder`: Output folder. Default: the folder of each input files
 * `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
