@@ -42,6 +42,9 @@ args = parser.parse_args()
 if args.random_seed:
     seed = args.random_seed
     random.seed(seed) # set the seed for calculations using random function
+    print("Seed for calculations using random function is: " + str(seed))
+else:
+    print("Seed is not set.")
 
 input = args.input # input file in form of mpileup, gzipped mpileup or bam
 list_of_inputs=[]
