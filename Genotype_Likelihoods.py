@@ -113,48 +113,52 @@ for g1 in list_of_inputs: # for every filename
     print("Output file is: " + output)
     
     if fileType == 1: # bam file
-        for alignment in pybam.read(g):
-            NSAMS=Nfiles
-            #print(alignment.sam_seq)
+        NSAMS=Nfiles
+        bamFile = pybam.read(g)
+        for alignment in bamFile:
+            for sam_seq, sam_qual in zip(alignment.sam_seq, alignment.sam_qual):
+                qualities 
+        #print(alignment.sam_seq)
             # myReads = Reads("","")
             # bases = alignment.sam_seq
             # qualities = alignment.sam_qual
-            if args.Inbreeding:
-                inbreed = args.Inbreeding
+            print(alignment.sam_qual)
+        if args.Inbreeding:
+            inbreed = args.Inbreeding
+        else:
+            inbreed = "0x{}".format(str(NSAMS))
+        # parse inbreeding coeffients
+        F=[]
+        temp=inbreed.split(',')
+        for t in temp:
+            vals=t.split('x')
+            if len(vals)==2:
+                F+=list(np.repeat(float(vals[0]),int(vals[1])))
             else:
-                inbreed = "0x{}".format(str(NSAMS))
-            # parse inbreeding coeffients
-            F=[]
-            temp=inbreed.split(',')
-            for t in temp:
-                vals=t.split('x')
-                if len(vals)==2:
-                    F+=list(np.repeat(float(vals[0]),int(vals[1])))
-                else:
-                    F+=[vals[0]]
-            print(F)
-            downsampling=float(args.downsampling) # fraction of data to be used (0-1]. 
-            #Original_sample_number=NSAMS
-            win=50 # window size for calculating ploidy
-            phredscale=33
-            NUMSITES=np.zeros(NSAMS+1,int)
-            NUMSITES_HWE=np.zeros(NSAMS+1,int)
-            ExpectedPloidy=[[] for i in range(NSAMS+1)]
-            Overall_Prob=np.zeros((NSAMS+1,len(ploidy)),float) # (NSAMS+1)xploidies array for probabilities of each ploidy for each sample and overall ploidy probabilities
-            Overall_Prob_HWE=np.zeros((NSAMS+1,len(ploidy)),float)
-            delta_prob=np.zeros((NSAMS+1,len(ploidy)),float)
-            counts=np.zeros((NSAMS+1,len(ploidy)),float)+1 # counts of bases for each ploidy being most likely
-            base_number=0 # count for bases
-            list_of_window=[]
-            list_of_window2=[]
-            no_bases=0
-            total_bases=0
-            Data=line.strip('\n')# convert bytes into string
-            l = Data.split('\t')
-            mySite = Site(str(l[0]),int(l[1]),str(l[2]))
-            myReads = Reads("","")
-            # pooled reads for first level filtering (global depth) and estimation of minor/major alleles and allele frequencies
-            individualDepth = np.zeros(NSAMS,float)
+                F+=[vals[0]]
+        print(F)
+        downsampling=float(args.downsampling) # fraction of data to be used (0-1]. 
+        #Original_sample_number=NSAMS
+        win=50 # window size for calculating ploidy
+        phredscale=33
+        NUMSITES=np.zeros(NSAMS+1,int)
+        NUMSITES_HWE=np.zeros(NSAMS+1,int)
+        ExpectedPloidy=[[] for i in range(NSAMS+1)]
+        Overall_Prob=np.zeros((NSAMS+1,len(ploidy)),float) # (NSAMS+1)xploidies array for probabilities of each ploidy for each sample and overall ploidy probabilities
+        Overall_Prob_HWE=np.zeros((NSAMS+1,len(ploidy)),float)
+        delta_prob=np.zeros((NSAMS+1,len(ploidy)),float)
+        counts=np.zeros((NSAMS+1,len(ploidy)),float)+1 # counts of bases for each ploidy being most likely
+        base_number=0 # count for bases
+        list_of_window=[]
+        list_of_window2=[]
+        no_bases=0
+        total_bases=0
+        Data=line.strip('\n')# convert bytes into string
+        l = Data.split('\t')
+        mySite = Site(str(l[0]),int(l[1]),str(l[2]))
+        myReads = Reads("","")
+        # pooled reads for first level filtering (global depth) and estimation of minor/major alleles and allele frequencies
+        individualDepth = np.zeros(NSAMS,float)
 
     elif fileType == 2: # mpilup file
         with open(g) as mp:
