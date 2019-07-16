@@ -88,349 +88,6 @@ def calcGenoLogLike1(reads,site):
                 log_likes[j] += math.log(sublike)
     return log_likes
 
-
-# calculate genotype likelihoods (in ln format) in case of haploids for Major and Minor
-def calcGenoLogLike1_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0]
-    iter=-1
-    ploidy=1
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for j in [major,minor]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            sublike = 0.0
-            if alleles[j] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
-# calculate genotype likelihoods (in ln format) in case of diploids for Major and Minor
-def calcGenoLogLike2_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0,0.0]
-    iter=-1
-    ploidy=2
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for [j1,j2] in [[major,major],[major,minor],[minor,minor]]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            sublike = 0.0
-            if alleles[j1] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j2] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
-
-# calculate genotype likelihoods (in ln format) in case of triploids for Major and Minor
-def calcGenoLogLike3_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0,0.0,0.0]
-    iter=-1
-    ploidy=3
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for [j1,j2,j3] in [[major,major,major],[major,major,minor],[major,minor,minor],[minor,minor,minor]]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            sublike = 0.0
-            if alleles[j1] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j2] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j3] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
-
-# calculate genotype likelihoods (in ln format) in case of tetraploids for Major and Minor
-def calcGenoLogLike4_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0,0.0,0.0,0.0]
-    iter=-1
-    ploidy=4
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for [j1,j2,j3,j4] in [[major,major,major,major],[major,major,major,minor],[major,major,minor,minor],[major,minor,minor,minor],[minor,minor,minor,minor]]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            
-            sublike = 0.0
-            if alleles[j1] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j2] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j3] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j4] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
-# calculate genotype likelihoods (in ln format) in case of pentaploids for Major and Minor
-def calcGenoLogLike5_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0,0.0,0.0,0.0,0.0]
-    iter=-1
-    ploidy=5
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for [j1,j2,j3,j4,j5] in [[major,major,major,major,major],[major,major,major,major,minor],[major,major,major,minor,minor],[major,major,minor,minor,minor],[major,minor,minor,minor,minor],[minor,minor,minor,minor,minor]]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            
-            sublike = 0.0
-            if alleles[j1] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j2] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j3] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j4] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-        
-            if alleles[j5] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
-
-# calculate genotype likelihoods (in ln format) in case of sessaploids for Major and Minor
-def calcGenoLogLike6_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    iter=-1
-    ploidy=6
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for [j1,j2,j3,j4,j5,j6] in [[major,major,major,major,major,major],[major,major,major,major,major,minor],[major,major,major,major,minor,minor],[major,major,major,minor,minor,minor],[major,major,minor,minor,minor,minor],[major,minor,minor,minor,minor,minor],[minor,minor,minor,minor,minor,minor]]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            
-            sublike = 0.0
-            if alleles[j1] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j2] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j3] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j4] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-        
-            if alleles[j5] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j6] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
-
-# calculate genotype likelihoods (in ln format) in case of settaploids for Major and Minor
-def calcGenoLogLike7_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    iter=-1
-    ploidy=7
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for [j1,j2,j3,j4,j5,j6,j7] in [[major,major,major,major,major,major,major],[major,major,major,major,major,major,minor],[major,major,major,major,major,minor,minor],[major,major,major,major,minor,minor,minor],[major,major,major,minor,minor,minor,minor],[major,major,minor,minor,minor,minor,minor],[major,minor,minor,minor,minor,minor,minor],[minor,minor,minor,minor,minor,minor,minor]]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            
-            sublike = 0.0
-            if alleles[j1] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j2] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j3] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j4] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-        
-            if alleles[j5] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j6] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j7] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
-
-# calculate genotype likelihoods (in ln format) in case of octaploids for Major and Minor
-def calcGenoLogLike8_MajorMinor(read,site,major,minor):
-    alleles=['A','C','G','T']
-    log_likes=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    iter=-1
-    ploidy=8
-    phredScale=33
-
-    # cycle across all possible genotypes
-    for [j1,j2,j3,j4,j5,j6,j7,j8] in [[major,major,major,major,major,major,major,major],[major,major,major,major,major,major,major,minor],[major,major,major,major,major,major,minor,minor],[major,major,major,major,major,minor,minor,minor],[major,major,major,major,minor,minor,minor,minor],[major,major,major,minor,minor,minor,minor,minor],[major,major,minor,minor,minor,minor,minor,minor],[major,minor,minor,minor,minor,minor,minor,minor],[minor,minor,minor,minor,minor,minor,minor,minor]]:
-        iter += 1
-
-        for i in range(len(read.base)):
-            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
-            
-            sublike = 0.0
-            if alleles[j1] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j2] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j3] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j4] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-        
-            if alleles[j5] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j6] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j7] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-
-            if alleles[j8] == read.base[i]:
-                sublike += (1-bP)/ploidy
-            else:
-                sublike += (bP/3)/ploidy
-            
-            log_likes[iter] += math.log(sublike)
-            
-    return(log_likes)
-
 def exp_or_zero(x):
     if(x==0):
         x=0.0
@@ -477,11 +134,42 @@ def filter(reads,min_quality_score):
     return(bases,qualities)
 
 
-    
-            
+# combinations with replacements, edited function from itertools
+def combinations_with_rep(iterable, r):
+    pool = list(iterable)
+    n = len(pool)
+    if not n and r:
+        return
+    indices = [0] * r
+    yield list(pool[i] for i in indices)
+    while True:
+        for i in reversed(range(r)):
+            if indices[i] != n - 1:
+                break
+        else:
+            return
+        indices[i:] = [indices[i] + 1] * (r - i)
+        yield list(pool[i] for i in indices)
 
-    
-            
-
-
-
+# calculate genotype likelihoods (in ln format) in case of all given Nploids for Major and Minor
+def calcGenoLogLikeN_MajorMinor(N,read,site,major,minor):
+    alleles = ['A','C','G','T']
+    log_likes=[0.0]*(N+1)
+    it = -1
+    phredScale=33
+    mm = [major,minor]
+    mmList = list(combinations_with_rep(mm,N)) # List of major minor combinations
+    # cycle across all possible genotypes
+    readLen = len(read.base)
+    for subList in mmList:
+        it += 1
+        for i in range(readLen):
+            bP = 10**((phredScale-ord(str(read.base_quality[i])))/10)
+            sublike = 0.0
+            for item in subList:
+                if alleles[item] == read.base[i]:
+                    sublike += (1-bP)/N
+                else:
+                    sublike += (bP/3)/N
+            log_likes[it] += math.log(sublike)
+    return(log_likes)

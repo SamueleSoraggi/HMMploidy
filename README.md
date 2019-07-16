@@ -52,13 +52,14 @@ Overview: calculate genotype likelihoods
 
 ### Input
 
-* the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file excluding the `.mpileup.gz` extension), for example:
+* the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file including the `.mpileup.gz` extension), for example:
 
 ```
-file1
-file2
-file3
+file1.mpileup.gz
+file2.mpileup.gz
+file3.mpileup.gz
 ```
+
 for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
 * `-o` or `--outFolder`: Output folder. Default: the folder of each input files
 * `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
@@ -68,6 +69,7 @@ for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
 * `-M3` or `--max_minor3_freq`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
 * `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
 * `-dpInd` or `--min_ind_depth`: Set the minimum depth of a base for each sample to included those in the calculations. A locus is not considered if one or more samples have depth lower than the minimum. Default: `0`.
+* `-s` or `--random_seed`: Set the random seed to be included in the calculations. If not set, every repeat of analysis will give different results.
 
 ### Output
 
@@ -76,7 +78,7 @@ A `.genolikes.gz` file for each prefix in the input file. The columns of the fil
 ### Syntax Example
 
 ```Shell
-python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5
+python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5 -s 1
 ```
 
 ## Inference of ploidy levels
