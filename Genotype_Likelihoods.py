@@ -305,12 +305,18 @@ for g1 in list_of_inputs: # for every filename
                                 with gzip.open(output,'at+') as f:
                                     f.write(content)
 
+
                                 # end likelihood calc
                             # end for sample
                         # end for if max minor
                     # end if not filtered for global depth
                 # end for line
 
+        try:
+            os.remove(mpFile) # remove unnecessary mpileup file
+        except:
+            pass
+    
     elif fileType == 2: # mpilup file
         with open(g) as mp:
             first_line = mp.readline()
