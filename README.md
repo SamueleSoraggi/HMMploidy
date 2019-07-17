@@ -4,6 +4,7 @@ Calculating its allele frequencies and genotype likelihoods requires to download
 
 * python 3, with packages `gzip, numpy, scipy, statistics`
 * R, with packages `pracma, data.table, Rcpp, getopt`
+* samtools
 
 ## Simulation of polyploid data
 
@@ -52,7 +53,7 @@ Overview: calculate genotype likelihoods
 
 ### Input
 
-* the file `names.filelist`, that contains the prefix of each `.mpileup.gz` file (that is, the name of each file including the `.mpileup.gz` extension), for example:
+* The file `names.filelist`, that contains the prefix of each file (that is, the name of each file including the extension), for example:
 
 ```
 file1.mpileup.gz
@@ -60,7 +61,7 @@ file2.mpileup.gz
 file3.mpileup.gz
 ```
 
-for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
+for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`. Supported file types are 'bam','mpileup' and 'mpileup.gz' (gzipped mpileup file).
 * `-o` or `--outFolder`: Output folder. Default: the folder of each input files
 * `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
 * `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in (0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
@@ -70,6 +71,7 @@ for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`.
 * `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
 * `-dpInd` or `--min_ind_depth`: Set the minimum depth of a base for each sample to included those in the calculations. A locus is not considered if one or more samples have depth lower than the minimum. Default: `0`.
 * `-s` or `--random_seed`: Set the random seed to be included in the calculations. If not set, every repeat of analysis will give different results.
+* `-r` or `--ref_fasta`: File name of the reference fasta file. Use this if bam files are being used. e.g TAIR10.fa.
 
 ### Output
 
