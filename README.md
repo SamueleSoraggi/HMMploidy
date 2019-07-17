@@ -45,7 +45,7 @@ with the file `ploidy.file` containing
 
 The output will consists of two files: `outFile.DP10.mpileup.gz` and `outFile.DP20.mpileup.gz`
 
-## Calculate genotype likelihoods from mpileup files
+## Calculate genotype likelihoods
 
 Overview: calculate genotype likelihoods
 
