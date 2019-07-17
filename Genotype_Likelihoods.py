@@ -1,7 +1,7 @@
 #! usr/bin/python3
+import os
 import sys
 import gzip
-import pybam
 import generics
 import numpy as np
 import math
@@ -26,7 +26,7 @@ alleles = ['A','C','G','T']
 ploidy = [1,2,3,4,5,6]
 
 parser = argparse.ArgumentParser()
-parser.add_argument("input",help="file containing the list of file names for gzipped mpileup files, mpileup files or bam files to be used in analysis")
+parser.add_argument("input",help="File containing the list of file names for gzipped mpileup files, mpileup files or bam files to be used in analysis")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
 parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--downsampling",help="Fraction of data to be used in the calculations",default=1)
@@ -37,6 +37,7 @@ parser.add_argument("-dpInd","--min_ind_depth",type=float,help="Set the minimum 
 parser.add_argument("-M2","--max_minor2_freq",type=float,help="Set the maximum frequency of third most prolific alleles for bases to be included in the calculations",default=0.1)
 parser.add_argument("-M3","--max_minor3_freq",type=float,help="Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations",default=0.1)
 parser.add_argument("-s","--random_seed",type=int,help="Set the random seed to be included in the calculations")
+parser.add_argument("-r","--ref_fasta",help="File name of the reference fasta file. Use this if bam files are being used. e.g TAIR10.fa")
 args = parser.parse_args()
 
 if args.random_seed:
@@ -100,25 +101,50 @@ for g1 in list_of_inputs: # for every filename
         g = "./" + g1
         g2 = g1[:-exl]
         if outFolder==0:
-            output = "./"+g2+".genolikes.gz"
+            output = "./" + g2 + ".genolikes.gz"
+            outOpt = 0
         else:
             output = outFolder+'/'.join(g2.split('/')[-1])+".genolikes.gz"
+            outOpt = 1
     else:
         g = g1
         g2 = g1[:-exl]
         if outFolder==0:
-            output = g2+".genolikes.gz"
+            output = g2 + ".genolikes.gz"
+            outOpt = 2
         else:
             output = outFolder+"/"+g2+".genolikes.gz"
+            outOpt = 3
     print("Output file is: " + output)
     
     if fileType == 1: # bam file
-        for alignment in pybam.read(g):
-            NSAMS=Nfiles
-            #print(alignment.sam_seq)
-            # myReads = Reads("","")
-            # bases = alignment.sam_seq
-            # qualities = alignment.sam_qual
+        if args.ref_fasta:
+            refFile = args.ref_fasta
+        else:
+            sys.exit("Reference fasta for bam file is not found. Please add your reference file in fasta format by using '-r' parameter and try again.")
+        if outOpt == 0:
+            mpFile = "./" + g2 + ".mpileup"
+        elif outOpt == 1:
+            mpFile = outFolder+'/'.join(g2.split('/')[-1])+".mpileup"
+        elif outOpt == 2:
+            mpFile = g2 + ".mpileup"
+        elif outOpt == 3:
+            mpFile = outFolder+"/"+g2+".mpileup"
+        bashCommand = "samtools mpileup -f " + refFile + " "  + g1 + " > " + mpFile
+        try:
+            os.system(bashCommand)
+        except OSError as e:
+            if e.errno == os.errno.ENOENT:
+            # handle file not found error
+                sys.exit("'samtools' not found. Please make sure that you have samtools installed.")
+            else:
+            # Something else went wrong while trying to run `samtools`
+                sys.exit("Something went wrong with 'samtools'.")
+        with open(mpFile) as mp:
+            first_line = mp.readline()
+            Data = first_line.strip('\n')
+            l = Data.split('\t')
+            NSAMS=int((len(l)-3)/3)
             if args.Inbreeding:
                 inbreed = args.Inbreeding
             else:
@@ -149,13 +175,148 @@ for g1 in list_of_inputs: # for every filename
             list_of_window2=[]
             no_bases=0
             total_bases=0
-            Data=line.strip('\n')# convert bytes into string
-            l = Data.split('\t')
-            mySite = Site(str(l[0]),int(l[1]),str(l[2]))
-            myReads = Reads("","")
-            # pooled reads for first level filtering (global depth) and estimation of minor/major alleles and allele frequencies
-            individualDepth = np.zeros(NSAMS,float)
+            
+            for line in mp:
+                Data=line.strip('\n')# convert bytes into string
+                l = Data.split('\t')
+                mySite = Site(str(l[0]),int(l[1]),str(l[2]))
+                myReads = Reads("","")
+                # pooled reads for first level filtering (global depth) and estimation of minor/major alleles and allele frequencies
+                individualDepth = np.zeros(NSAMS,float)
+                for n in range(NSAMS):
+                    n=n+1
+                    subReads= Reads(l[(n-1)*3+4],l[(n-1)*3+5])
+                    individualDepth[n-1] = len(subReads.base)
+                    myReads.base=str(myReads.base+subReads.base)
+                    myReads.base_quality=str(myReads.base_quality+subReads.base_quality)
 
+                # convert to bases
+                [bases,indexDelN] = generics.convertSyms(myReads,mySite)
+                myReads=Reads(bases,myReads.base_quality)
+                if len(myReads.base)!=len(myReads.base_quality):
+                    sys.exit("Conversion not succesful")
+                # filter by quality
+                [bases,qualities] = generics.filter(myReads,args.min_quality_score)
+                myReads=Reads(bases,qualities)
+
+                # find all indexes of occurances to be filtered out
+                index_of_X=[]
+                index=-1
+                while True:
+                        index=myReads.base.find('X',index+1)
+                        if index == -1:
+                            break  # all occurrences have been found
+                        index_of_X.append(index)
+                myReads.base=myReads.base.replace('X','')
+                # remove all corresponding base qualities
+                count=0
+                for i in index_of_X:
+                    myReads.base_quality = myReads.base_quality[:i-count] + myReads.base_quality[i+1-count:]
+                    count+=1
+                globalDepth = len(myReads.base)
+                if ((globalDepth > args.min_global_depth) & (min(individualDepth)>args.min_ind_depth)):
+                    total_bases+=globalDepth
+                    no_bases+=1
+                    # counts of non-major bases
+                    nonMajorCount = generics.calcNonMajorCounts(myReads)
+                    nonMajorProp = nonMajorCount/len(myReads.base)
+                    # filter the site based on global depth
+                    Set_min_prop = args.min_non_major_freq # minimum proportion of nonMajorCount
+                    if nonMajorProp>Set_min_prop: # remove bases where more that 1-Set_min_prop are major allele i.e monomorphic bases
+                        prob_of_ancestral_allelle_maj=1-nonMajorProp
+
+                        haploid = generics.calcGenoLogLike1(myReads,mySite)
+                        tri_ref = haploid[4] # retrieve reference value for if the base is not triallilic
+                        haploid=haploid[:4] # remove reference value
+                        # keep reference allele as one possible allele so always assume KeepRef=0
+                        [major,minor,minor2,minor3] = [haploid.index(sorted(haploid,reverse=True)[0]),haploid.index(sorted(haploid,reverse=True)[1]),haploid.index(sorted(haploid,reverse=True)[2]),haploid.index(sorted(haploid,reverse=True)[3])]
+                        # remove sites with >0.1 frequency of minor 2 or minor 3 allele to remove non biallilic sites (0.1 error built in for sequencing error)
+                        minor2_prop=generics.calcAlleleFreq(minor2,myReads)/len(myReads.base) # Calculate allele frequencies of minor2&3 alleles
+                        minor3_prop=generics.calcAlleleFreq(minor3,myReads)/len(myReads.base)
+
+                        if(minor2_prop<args.max_minor2_freq and minor3_prop<args.max_minor3_freq):
+                            P_bar=0
+                            Q_bar=0
+                            for read in range(len(myReads.base)):
+                                if myReads.base[read]==alleles[major]:
+                                    P_bar+=(1-(10**((phredscale-ord(str(myReads.base_quality[read])))/10)))
+                                elif myReads.base[read]==alleles[minor]:
+                                    Q_bar+=(1-(10**((phredscale-ord(str(myReads.base_quality[read])))/10)))
+
+                            P = P_bar/(P_bar+Q_bar) # proportion of major allele weigted by read quality
+                            Q = Q_bar/(P_bar+Q_bar) # proportion of minor allele weigted by read quality
+
+                            base_number+=1 # count number of SNPs included in data
+                            for n in range(NSAMS):
+
+                                # retrieve bases for this particular sample
+                                n=n+1
+                                myReads = Reads(l[(n-1)*3+4],l[(n-1)*3+5])
+                                (bases, indexDelN) = generics.convertSyms(myReads,mySite)
+                                myReads = Reads(bases, myReads.base_quality)
+
+                                # filter by quality
+                                [bases,qualities] = generics.filter(myReads,args.min_quality_score)
+                                myReads=Reads(bases,qualities)
+                                # find all indexes of occurances to be filtered out
+                                index_of_X=[]
+                                index=-1
+                                while True:
+                                        index=myReads.base.find('X',index+1)
+                                        if index == -1:
+                                            break  # all occurrences have been found
+                                        index_of_X.append(index)
+                                myReads.base=myReads.base.replace('X','')
+                                # remove all corresponding base qualities
+                                count=0
+                                for i in index_of_X:
+                                    myReads.base_quality = myReads.base_quality[:i-count] + myReads.base_quality[i+1-count:]
+                                    count+=1
+                                major_count=generics.calcAlleleFreq(major,myReads)
+                                minor_count=generics.calcAlleleFreq(minor,myReads)
+                                # take a sample of the bases so that the proportion of data used is as required
+                                if downsampling<1:
+                                    data_prop = math.ceil(len(myReads.base)*downsampling) # calculate how many bases to include for proportion of sample
+                                    rand_samp = random.sample(range(0,len(myReads.base)),data_prop)
+                                    base = ""
+                                    qualities = ""
+                                    for r in rand_samp:
+                                        base+=myReads.base[r]
+                                        qualities+=myReads.base_quality[r]
+                                    myReads=Reads(base,qualities)
+                                # find sample depth of filtered data
+                                sampleDepth = len(myReads.base)
+                                NUMSITES[0]+=sampleDepth # count the number of reads for each sample
+                                NUMSITES[n]+=sampleDepth
+                                sep="\t"
+                                content=""
+                                content=(mySite.chrom,str(mySite.position),str(n),mySite.reference,str(sampleDepth),alleles[major],alleles[minor],str(major_count),str(minor_count))
+                                content=sep.join(content)
+                                content+="\t"
+
+                                for ip in ploidy:
+                                    Nploid = generics.calcGenoLogLikeN_MajorMinor(ip, myReads, mySite, major, minor)
+                                    content2 ="\t".join(map(str,Nploid))
+                                    content += content2
+                                    content += "\t"
+                                content += "\n"
+
+                                # write file of genotype likelihoods
+                                with gzip.open(output,'at+') as f:
+                                    f.write(content)
+
+
+                                # end likelihood calc
+                            # end for sample
+                        # end for if max minor
+                    # end if not filtered for global depth
+                # end for line
+
+        try:
+            os.remove(mpFile) # remove unnecessary mpileup file
+        except:
+            pass
+    
     elif fileType == 2: # mpilup file
         with open(g) as mp:
             first_line = mp.readline()
