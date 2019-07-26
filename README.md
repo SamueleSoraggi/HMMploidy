@@ -64,7 +64,7 @@ file3.mpileup.gz
 for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`. Supported file types are 'bam','mpileup' and 'mpileup.gz' (gzipped mpileup file).
 * `-o` or `--outFolder`: Output folder. Default: the folder of each input files
 * `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
-* `-p` or `--ploidyFile`: File containing the list of ploidy levels to be used in analysis, for example: 
+* `-p` or `--ploidyFile`: File containing the list of ploidy levels to be used in analysis, that contains one ploidy level per line, for example: 
 ```
 2
 4
