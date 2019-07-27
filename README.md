@@ -64,6 +64,14 @@ file3.mpileup.gz
 for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`. Supported file types are 'bam','mpileup' and 'mpileup.gz' (gzipped mpileup file).
 * `-o` or `--outFolder`: Output folder. Default: the folder of each input files
 * `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
+* `-p` or `--ploidyFile`: File containing the list of ploidy levels to be used in analysis, that contains one ploidy level per line, for example: 
+```
+2
+4
+5
+```
+
+for diploidy (2), tetraploidy (4) and pentaploidy (5). If not set, default ploidy levels [1, 2, 3, 4, 5, 6] will be used in the analysis.
 * `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in (0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
 * `-m` or `--min_non_major_freq`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
 * `-M2` or `--max_minor2_freq`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
@@ -80,7 +88,7 @@ A `.genolikes.gz` file for each prefix in the input file. The columns of the fil
 ### Syntax Example
 
 ```Shell
-python3 Genotype_Likelihoods.py names.filelist -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5 -s 1
+python3 Genotype_Likelihoods.py names.filelist -p ploidyFile -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5 -s 1
 ```
 
 ## Inference of ploidy levels

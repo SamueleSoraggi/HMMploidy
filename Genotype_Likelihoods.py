@@ -23,10 +23,9 @@ class Reads:
 
 alleles = ['A','C','G','T']
 
-ploidy = [1,2,3,4,5,6]
-
 parser = argparse.ArgumentParser()
 parser.add_argument("input",help="File containing the list of file names for gzipped mpileup files, mpileup files or bam files to be used in analysis")
+parser.add_argument("-p", "--ploidyFile",help="File containing the list of ploidy levels to be used in analysis")
 parser.add_argument("-o","--outFolder",help="output folder",default=0)
 parser.add_argument("-i","--Inbreeding",help="Inbreeding coefficients for samples e.g 0.1x3,0.2 = 0.1,0.1,0.1,0.2 ")
 parser.add_argument("-d","--downsampling",help="Fraction of data to be used in the calculations",default=1)
@@ -47,7 +46,20 @@ if args.random_seed:
 else:
     print("Seed is not set.")
 
-input = args.input # input file in form of mpileup, gzipped mpileup or bam
+if args.ploidyFile:
+    ploidyFile = args.ploidyFile
+    list_of_ploidy=[]
+    with open(ploidyFile,'rb') as ploidyList:
+        for line in ploidyList:
+            line = int(line.decode().strip('\n')) # convert bytes into integers
+            list_of_ploidy.append(line)
+        ploidy = list_of_ploidy
+        print("Ploidy levels to be tested in analysis are: " + str(ploidy))
+else:
+    ploidy = [1,2,3,4,5,6] # default ploidy levels
+    print("Default ploidy levels to be tested in analysis are: " + str(ploidy))
+
+inputs = args.input # input file in form of mpileup, gzipped mpileup or bam
 list_of_inputs=[]
 fileType = 0 # initial file type
 fileTypes = {
@@ -56,7 +68,7 @@ fileTypes = {
         3:"mpileup.gz"
         }
 
-with open(input,'rb') as filelist:
+with open(inputs,'rb') as filelist:
     for line in filelist:
         line = line.decode().strip('\n') # convert bytes into strings
         if line.endswith(".bam"):
@@ -95,41 +107,33 @@ extensionLen = {
 
 exl = extensionLen[fileType] # extension length of fileType including dots
 outFolder = args.outFolder
-for g1 in list_of_inputs: # for every filename 
-    directory = '/'.join(g1.split('/')[:-1])
-    if len(directory) == 0:
-        g = "./" + g1
-        g2 = g1[:-exl]
-        if outFolder==0:
-            output = "./" + g2 + ".genolikes.gz"
-            outOpt = 0
-        else:
-            output = outFolder+'/'.join(g2.split('/')[-1])+".genolikes.gz"
-            outOpt = 1
-    else:
-        g = g1
-        g2 = g1[:-exl]
-        if outFolder==0:
-            output = g2 + ".genolikes.gz"
-            outOpt = 2
-        else:
-            output = outFolder+"/"+g2+".genolikes.gz"
-            outOpt = 3
-    print("Output file is: " + output)
     
-    if fileType == 1: # bam file
-        if args.ref_fasta:
-            refFile = args.ref_fasta
+if fileType == 1: # bam file
+    if args.ref_fasta:
+        refFile = args.ref_fasta
+    else:
+        sys.exit("Reference fasta for bam file is not found. Please add your reference file in fasta format by using '-r' parameter and try again.")
+    for g1 in list_of_inputs: # for every filename 
+        directory = '/'.join(g1.split('/')[:-1])
+        if len(directory) == 0:
+            g = "./" + g1
+            g2 = g1[:-exl]
+            if outFolder==0:
+                output = "./" + g2 + ".genolikes.gz"
+                mpFile = "./" + g2 + ".mpileup"
+            else:
+                output = outFolder+'/'.join(g2.split('/')[-1])+".genolikes.gz"
+                mpFile = outFolder+'/'.join(g2.split('/')[-1])+".mpileup"
         else:
-            sys.exit("Reference fasta for bam file is not found. Please add your reference file in fasta format by using '-r' parameter and try again.")
-        if outOpt == 0:
-            mpFile = "./" + g2 + ".mpileup"
-        elif outOpt == 1:
-            mpFile = outFolder+'/'.join(g2.split('/')[-1])+".mpileup"
-        elif outOpt == 2:
-            mpFile = g2 + ".mpileup"
-        elif outOpt == 3:
-            mpFile = outFolder+"/"+g2+".mpileup"
+            g = g1
+            g2 = g1[:-exl]
+            if outFolder==0:
+                output = g2 + ".genolikes.gz"
+                mpFile = g2 + ".mpileup"
+            else:
+                output = outFolder+"/"+g2+".genolikes.gz"
+                mpFile = outFolder+"/"+g2+".mpileup"
+        print("Output file is: " + output)
         bashCommand = "samtools mpileup -f " + refFile + " "  + g1 + " > " + mpFile
         try:
             os.system(bashCommand)
@@ -317,7 +321,24 @@ for g1 in list_of_inputs: # for every filename
         except:
             pass
     
-    elif fileType == 2: # mpilup file
+elif fileType == 2: # mpilup file
+    for g1 in list_of_inputs: # for every filename 
+        directory = '/'.join(g1.split('/')[:-1])
+        if len(directory) == 0:
+            g = "./" + g1
+            g2 = g1[:-exl]
+            if outFolder==0:
+                output = "./" + g2 + ".genolikes.gz"
+            else:
+                output = outFolder+'/'.join(g2.split('/')[-1])+".genolikes.gz"
+        else:
+            g = g1
+            g2 = g1[:-exl]
+            if outFolder==0:
+                output = g2 + ".genolikes.gz"
+            else:
+                output = outFolder+"/"+g2+".genolikes.gz"
+        print("Output file is: " + output)
         with open(g) as mp:
             first_line = mp.readline()
             Data = first_line.strip('\n')
@@ -489,7 +510,24 @@ for g1 in list_of_inputs: # for every filename
                     # end if not filtered for global depth
                 # end for line
 
-    elif fileType == 3: # mpileup.gz file
+elif fileType == 3: # mpileup.gz file
+    for g1 in list_of_inputs: # for every filename 
+        directory = '/'.join(g1.split('/')[:-1])
+        if len(directory) == 0:
+            g = "./" + g1
+            g2 = g1[:-exl]
+            if outFolder==0:
+                output = "./" + g2 + ".genolikes.gz"
+            else:
+                output = outFolder+'/'.join(g2.split('/')[-1])+".genolikes.gz"
+        else:
+            g = g1
+            g2 = g1[:-exl]
+            if outFolder==0:
+                output = g2 + ".genolikes.gz"
+            else:
+                output = outFolder+"/"+g2+".genolikes.gz"
+        print("Output file is: " + output)
         with gzip.open(g,'rb') as gz:# opens the mpilup.gz file. Use mpileup.read() to display content
             first_line = gz.readline()
             Data=first_line.decode().strip('\n') # Convert bytes into string
