@@ -57,7 +57,7 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
            chosenInd = NA, #which Individual to consider (one at the time for now)
            #Must implement option for: all ind together or one at the time ?
                                         #isSims = FALSE, #data is simulated. if TRUE fileList will also refer to file(s) with true ploidies
-           truePl = NA, #true ploidies (as argument c(truePl) of an R vector)
+           truePl = NA, #true ploidy for a ploidy simulation
            alpha = NA, #alpha parameters comma separated
            beta = NA, #beta parameters comma separated
            quantileTrim ="0.02,0.98", #quantiles for trimming
@@ -105,7 +105,7 @@ if(!is.na(file))
 if(is.na(file))
     filez <- unlist( read.table(fileList, header=FALSE, as.is=T)  )
 
-angsdVector <- c(); fileVector <- c(); outPdf <- c(); outTxt <- c();
+angsdVector <- c(); fileVector <- c(); outPdf <- c(); outTxt <- c(); outRate <- c()
 BASENAMEFILE <- c();
 for(i in 1:length(filez)){
     fileVector[i] <- paste(filez[i],".genolikes",sep="")
@@ -113,13 +113,18 @@ for(i in 1:length(filez)){
     splittedName <- unlist(strsplit(filez[i],split="/"))
     BASENAMEFILE[i] <- splittedName[length(splittedName)]
     outPdf[i] <- paste(filez[i],".pdf",sep="")
-    if(is.na(outSuffix))
+    if(is.na(outSuffix)){
         outTxt[i] <- paste(filez[i],"HMMploidy",sep=".")
-    if(!is.na(outSuffix))
+	outRate[i] <- paste(filez[i],".testRate",sep="")}
+    if(!is.na(outSuffix)){
         outTxt[i] <- paste(filez[i],outSuffix,"HMMploidy",sep=".")
+	outRate[i] <- paste(filez[i],outSuffix,".testRate",sep="")}
     
 }
 ##numeric conversion of inputs
+if(!is.na(truePl))
+	truePl = as.numeric(truePl)
+
 wind <- as.numeric(wind)
 minInd <- as.numeric(minInd)
 maxPloidy <- as.numeric(maxPloidy)
@@ -1570,6 +1575,11 @@ for(i in 1:length(fileVector)){ #loop over input files
             cat(V$y,"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE) # inferred ploidy for the above defined window
         if(!strcmp(useGeno,"yes"))
             cat(hmmOut,"\n",file=outTxt[i],sep="\t",append=TRUE,fill=FALSE)
+
+	if(!is.na(truePl)){
+            succRate = (sum(V$y == truePl) / length(V$y))
+            cat(succRate,"\n",file=outRate[i],append=!(fileCounter==1))
+        }
         
         ##cat(sum( (V$y - truePl)!=0 )/length(V$y)  ,"\n",file=paste(outTxt[i],"Error",sep=""),sep="",append=TRUE) #error rate when comparing to simulations (only for article publication)
         ##print(hmmRes$geno)
