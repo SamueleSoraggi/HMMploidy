@@ -1226,7 +1226,7 @@ for(i in 1:length(fileVector)){ #loop over input files
     for(whichInd in chosenInd){ #loop over individuals
         
         chrNameVar = chrName #vector names of chromosomes that can change in the for loop
-        chrVar = chr
+        chrVar = chr 
         
         ##select single individual depth and genolikes
         idxSingle <- seq(whichInd,rowsGL,nInd)
@@ -1268,6 +1268,13 @@ for(i in 1:length(fileVector)){ #loop over input files
         if(length(chrNameVar)>1){
             for(nn in chrNameVar){
                 ctgSites <- sitesSNP[chrSNP==nn]
+                print(nn)
+                print(ctgSites)
+                if(!is.sorted(ctgSites))
+                    stop( paste('The contig ', nn, ' contains unsorted values. This might be due by:\n',
+                    '\t1) duplicated loci in your data ==> find and remove them\n',
+                    '\t2) unsorted loci in one or more chromosomes. Use\n',
+                    '\t\t sort -k 1,1 -k 2,2n yourfile.genolike > sorted.genolike', sep='' ) )
                 #print(nn)
                 if(length(ctgSites)==0)
                     ctgSites=1 #to avoid warnings           
