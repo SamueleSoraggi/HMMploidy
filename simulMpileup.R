@@ -1,4 +1,4 @@
-# simulate mpileup file with different ploidy 1-5, assuming only 2 alleles and genotype frequencies defined by K and Ne and F
+# simulate mpileup file with different ploidy 1-6, assuming only 2 alleles and genotype frequencies defined by K and Ne and F
 
 # assume, population allele frequencies drawn from an exponential distribution
 
@@ -102,7 +102,7 @@ depth <- matrix( 0, nrow=nsams, ncol=nsites )
 for(samIdx in 1:nsams){
     rangeLams <- opt$depth * ncopy[samIdx] + (opt$depth * ncopy[samIdx] * opt$errdepth * c(-1,1))
     sampledLams <- runif(nsites, min=rangeLams[1], max=rangeLams[2])
-    depth[samIdx,] <- rpois(nsites,sampledLams)
+    depth[samIdx,] <- rpois(nsites,max(0.01,sampledLams)) #avoid negative or zero lambdas
     }
 
 rm(sampledLams)

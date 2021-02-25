@@ -1268,8 +1268,8 @@ for(i in 1:length(fileVector)){ #loop over input files
         if(length(chrNameVar)>1){
             for(nn in chrNameVar){
                 ctgSites <- sitesSNP[chrSNP==nn]
-                print(nn)
-                print(ctgSites)
+                #print(nn)
+                #print(ctgSites)
                 if(!is.sorted(ctgSites))
                     stop( paste('The contig ', nn, ' contains unsorted values. This might be due by:\n',
                     '\t1) duplicated loci in your data ==> find and remove them\n',
@@ -1394,7 +1394,7 @@ for(i in 1:length(fileVector)){ #loop over input files
         p = .05
         mat2 <- mat
         print(mat)
-        if(length(mat)[1] > 1 & any(diag(mat)<p)){
+        if(length(mat)[1] > 1 & any(diag(mat)<p) & sum(diag(mat)<p)<dim(mat)[1]){
             for(l in 1:dim(mat)[1])
                 if(mat[l,l]>p)
                     keepIdx <- c(keepIdx,l)

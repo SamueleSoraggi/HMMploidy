@@ -3,3 +3,8 @@ __pycache__/
 # Ignore vim swap files
 *.swp
 *.swo
+._.DS_Store
+.DS_Store
+tools/nQuire.R~
+.gitignore
+simulMpileup.R~
