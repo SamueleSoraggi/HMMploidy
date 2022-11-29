@@ -47,6 +47,7 @@ print.args<-function(args,des){
 args<-list(file = NA, #single basename of file to analize (does not need the list 'filelist' for multiple files)
            fileList = NA, #list of basenames for GUNZIPPED .genolike files
            nameList = NA, #bed file to choose chromosomes and sites
+           region = NA, #the chromosome/scaffold name to analyze separately (will be applied to all individuals)
            useGeno = "yes", #use genotype likelihoods
            SNPtrim = "0.1,0.9",
            wind = NA, #size of window for depth and genotype likelihoods. we work on a chromosome-basis.
@@ -68,6 +69,7 @@ args<-list(file = NA, #single basename of file to analize (does not need the lis
 #if no argument aree given prints the need arguments and the optional ones with default
 des<-list(fileList="[string] list of .genolike files",
           wind="[integer] Size of window for depth and genotype likelihoods (NA)",
+          region="[string] A region in which you want to isolate your analysis (will be applied to all genomes)",
           nameList = "[NA] List of names for the samples",
           SNPtrim = "[integers] comma-separated freq for SNP trimming (0.1,0.9)",
           useGeno = "yes=use genotype likelihoods, otherwise not",
@@ -1260,6 +1262,15 @@ for(i in 1:length(fileVector)){ #loop over input files
         chrVar <- chrVar[totSNP]
         chrNameVar = unique(chrVar) #remember to update chromosome names because you might remove a chromosome
         
+        #subset to the chosen region
+        region <- toString(region)
+        if(!is.na(region)){
+            cat("Selecting region ", region, "of your data\n", sep="")
+            if(!region %in% chrNameVar)
+                stop( paste('Error: The chosen region is not found in your data\n', sep='' ) )
+            chrNameVar <- chrNameVar[ chrNameVar == region ]
+        }
+
         ##remove contigs without loci or make smaller window if not enough loci
         rmChrSNP <- c()
         rmChrSingle <- c()
