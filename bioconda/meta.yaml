@@ -10,7 +10,7 @@ package:
 
 source:
   url: https://github.com/SamueleSoraggi/HMMploidy/archive/refs/tags/v{{ version }}.tar.gz
-  sha256: SHA256_PLACEHOLDER
+  sha256: 986af2015820d691a83547486e14cb572872c13737ebdefed503165ebaed92f5
 
 build:
   noarch: python
