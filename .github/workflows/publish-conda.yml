@@ -1,0 +1,34 @@
+name: Publish conda package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.11"
+          channels: conda-forge
+          channel-priority: strict
+
+      - name: Install conda-build and anaconda-client
+        shell: bash -l {0}
+        run: conda install -y conda-build anaconda-client
+
+      - name: Build package
+        shell: bash -l {0}
+        run: conda build recipe/ -c conda-forge --output-folder dist/
+
+      - name: Upload to anaconda.org (samuele.soraggi)
+        shell: bash -l {0}
+        env:
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
+        run: |
+          anaconda -t "$ANACONDA_API_TOKEN" upload -u samuele.soraggi dist/noarch/hmmploidy-*.tar.bz2

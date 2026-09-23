@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  pytest:
+    name: pytest (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.9"
+          - os: ubuntu-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,bioconda
+          channel-priority: strict
+          activate-environment: hmmploidy-test
+
+      - name: Install dependencies
+        # samtools (bioconda) is needed for the BAM tests; they are skipped without it
+        run: |
+          conda install -y "numpy>=1.23" "scipy>=1.9" "pandas>=1.5" "matplotlib-base>=3.6" \
+            "numba>=0.57" samtools pytest
+          pip install --no-deps -e .
+
+      - name: Run tests
+        run: python -m pytest tests -v --durations=10

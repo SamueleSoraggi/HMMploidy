@@ -8,3 +8,5 @@ __pycache__/
 tools/nQuire.R~
 .gitignore
 simulMpileup.R~
+.claude/
+hmmploidy.egg-info/

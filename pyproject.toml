@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hmmploidy"
+version = "2.0.0"
+description = "Genotype-likelihood- and depth-based HMM for inference of ploidy levels"
+readme = "README.md"
+license = { text = "LGPL-3.0-or-later" }
+authors = [{ name = "Samuele Soraggi" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.9",
+    "pandas>=1.5",
+    "matplotlib>=3.6",
+    "numba>=0.57",
+]
+
+[project.urls]
+Homepage = "https://github.com/samuelesoraggi/HMMploidy"
+Repository = "https://github.com/samuelesoraggi/HMMploidy"
+
+[project.optional-dependencies]
+bayesian = ["pymc>=5.6", "arviz>=0.15"]
+notebook = ["jupyter", "ipykernel"]
+test = ["pytest>=7"]
+
+[project.scripts]
+hmmploidy = "hmmploidy.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["hmmploidy*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

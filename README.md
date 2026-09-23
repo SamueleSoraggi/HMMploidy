@@ -1,180 +1,274 @@
-# HMMploidy: genotype-likelihood- and coverage-based Hidden Markov Model for inference of ploidy levels.
-Tools for inferring ploidy levels, testing for aneuploidy and other stuff.
-Calculating its allele frequencies and genotype likelihoods requires to download the followings:
+# HMMploidy: genotype-likelihood- and coverage-based Hidden Markov Model for inference of ploidy levels
 
-* python 3, with packages `gzip, numpy, scipy, pandas, lmfit`
-* R, with packages `pracma, data.table, Rcpp, getopt`
-* samtools
+Tools for inferring ploidy levels, testing for aneuploidy and other applications from
+low/medium-coverage sequencing data.
 
-## Simulation of polyploid data
+**Version 2.0 is a full, pure-Python reimplementation of the toolchain.** The
+original R (`HMMploidy.R`), Bash (`simulationScript.sh`) and R (`simulMpileup.R`)
+scripts have been rewritten as a single `hmmploidy` Python package (the
+genotype-likelihood calculator was already Python and has been kept, but its
+inner read-parsing/likelihood loop was rewritten to be vectorised with numpy
+instead of doing quadratic-time, character-by-character string processing).
+The original scripts are still present in the repository for reference but are
+superseded by the `hmmploidy` package described below.
 
-Overview: simulate poliploidy organisms and output them in an `mpileup.gz` format
+Only one dependency is now required to run everything:
 
-`simulationScript.sh -p $FILE -d $DEPTH -l $LOCI -o $OUTNAME`
+* Python >= 3.9, with `numpy, scipy, pandas, matplotlib` (and, for the optional
+  Bayesian model, `pymc` + `arviz`). See [environment.yml](environment.yml).
+* `numba` (compiled genotype-likelihood and HMM kernels).
+* `samtools` only if you plan to feed BAM files directly into the genotype
+  likelihood calculator (mpileup/mpileup.gz input does not need it).
+
+```bash
+conda env create -f environment.yml
+conda activate hmmploidy
+pip install -e .          # exposes the `hmmploidy` console script
+```
+
+## Overview of the pipeline
+
+```mermaid
+flowchart LR
+    A["hmmploidy simulate\n(or your own BAM/mpileup)"] --> B["hmmploidy genolikes"]
+    B --> C["hmmploidy run\n--model overdispersed|negbinom|em|bayesian"]
+    C --> D[".HMMploidy text output\n+ .pdf plot"]
+```
+
+1. **`hmmploidy simulate`** - simulate polyploid sequencing data (mpileup format).
+2. **`hmmploidy genolikes`** - compute per-site, per-ploidy genotype likelihoods.
+3. **`hmmploidy run`** - fit the ploidy HMM (three interchangeable model choices, see below) and
+   report/plot the inferred ploidy per genomic window.
+
+## Modelling notes: depth + genotype-likelihood emissions, and model choices
+
+The HMM has one state per candidate ploidy level (1..`maxPloidy`). At every
+genomic window the model observes two pieces of evidence: the **mean read
+depth** of the window, and the **genotype likelihoods** of the SNPs inside the
+window (marginalised over the unknown allelic dosage under a
+Binomial(ploidy, population-frequency) prior - see `hmmploidy.data.geno_loglik_for_ploidy`,
+a direct translation of the original `pGenoDataAll`). The two sources of
+evidence are combined additively in log-space and passed through the same
+forward-backward/Viterbi machinery for all models (`hmmploidy.hmm.common`);
+what differs between models is **only how the depth-emission density is
+parameterised and fit**:
+
+| Model (`--model`) | Depth emission | Fitting technique | Notes |
+|---|---|---|---|
+| `overdispersed` (default) | Gamma with mean `k * haploid_depth` (shared across states) + outlier component; allele counts are **Beta-Binomial** with overdispersion `rho` | Baum-Welch EM (closed-form haploid depth, 1-D Newton for the Gamma shape); `rho` chosen by maximising the penalised HMM likelihood over a grid; sticky Dirichlet prior on self-transitions; multi-start over whole-genome ploidy | Computes its own genotype likelihoods from per-SNP allele counts, so allelic overdispersion (reference bias, mapping artefacts) does not produce overconfident wrong calls. `rho = 0` recovers the Binomial model. The dosage prior uses leave-one-out population allele frequencies (from the *other* individuals) integrated over their uncertainty, which avoids an upward bias for deep samples in small cohorts. See `hmmploidy/hmm/overdispersed.py`. |
+| `negbinom` | Negative Binomial (mean `alpha/beta`) | Conditional EM with a Newton-Raphson M-step for `alpha` | Direct translation of the original `HMMploidy.R`. Captures depth over-dispersion, but the Newton-Raphson step can be unstable on noisy/small data. |
+| `em` | Poisson | Baum-Welch EM with a **closed-form** M-step (weighted mean) | New, added per request. Faster and more numerically stable than `negbinom` because no Newton-Raphson is needed; slightly less flexible since it does not model over-dispersion explicitly (windowing already reduces variance). Good default for quick/exploratory runs. |
+| `bayesian` | Negative Binomial, with `mu_k = haploid_depth * k` shared across states | Hierarchical Bayesian model fit with PyMC/NUTS | New, added per request. Shares statistical strength across ploidy states through a single haploid-depth parameter, propagates full posterior uncertainty (not just a point estimate), and is more robust in low-window-count regimes. The final ploidy path is obtained by plugging posterior-mean parameters into the same Viterbi decoder used by the other two models. |
+
+Why these choices: a plain Negative Binomial fit **independently** per ploidy
+state (as in the original model) can be over-parameterised when the number of
+windows is small, since each state's `alpha`/`beta` are estimated with no
+information sharing. Tying the mean of every state to a single haploid-depth
+parameter (as in the `bayesian` model) is a more parsimonious, biologically
+motivated alternative, and a hierarchical/Bayesian treatment additionally
+propagates parameter uncertainty into the ploidy calls instead of only
+reporting a point estimate. The `em` (Poisson) alternative trades away
+over-dispersion modelling for a much simpler, closed-form, faster-converging
+EM update, which is attractive when speed matters or when data are already
+reasonably well window-averaged.
+
+`hmmploidy run` also implements a simplification relative to the original R
+script: the original tried to automatically *remove* candidate ploidy states
+during EM iterations via a combinatorial BIC search. This is not reimplemented
+(it was O(2^maxPloidy) and hard to keep numerically stable); instead all
+`maxPloidy` states are always kept, and states with negligible posterior
+support can simply be ignored downstream.
+
+## 1. Simulation of polyploid data: `hmmploidy simulate`
+
+Overview: simulate polyploid organisms and output them in `mpileup.gz` format. Pure-Python
+replacement for `simulationScript.sh` + `simulMpileup.R`, with an added choice of
+depth-generating distribution.
+
+```Shell
+hmmploidy simulate -p $FILE -d $DEPTH -l $LOCI -o $OUTNAME [--depth-model poisson|negbinom]
+```
 
 ### Input
 
-* `-p` or `--ploidyFile`: file containing the desired simulated data (see below for the sintax). 
-Each line of the `ploidyFile` contains the ploidy number and the number of individuals for $K$ adjacent segments of a number $J$ of genomes. Example: $K=3$ adjacent segments and $20$ genomes. The first segment is diploid for all $20$ genomes, the second with is diploid for 10 genomes and tetraploid for 10 genomes, and the third is triploid for all genomes.
+* `-p` or `--ploidyFile`: file containing the desired simulated data (same syntax as before).
+  Each line of the `ploidyFile` contains the ploidy number and the number of individuals for $K$
+  adjacent segments of a number $J$ of genomes. Example: $K=3$ adjacent segments and $20$ genomes.
+  The first segment is diploid for all $20$ genomes, the second is diploid for 10 genomes and
+  tetraploid for 10 genomes, and the third is triploid for all genomes.
+  ```Shell
+  2x20
+  2x10,4x10
+  3x20
+  ```
+  The length of each segment is expressed by the `--loci` parameter below.
+* `-l` or `--loci`: comma-separated number of loci $l_1,l_2,...,l_K$ used in each simulated segment.
+* `-d` or `--depth`: comma-separated haploid depths to simulate. For each depth, a compressed
+  `mpileup` file is created.
+* `-o` or `--out`: output file name prefix. Default: `out`.
+* `--depth-model {poisson,negbinom}`: distribution used to generate per-site sequencing depth
+  (default `poisson`, matching the original script). Use `negbinom` to generate over-dispersed
+  depths and stress-test how the three `hmmploidy run` models behave under a mismatched
+  depth-generating process; control the amount of over-dispersion with `--dispersion` (Negative
+  Binomial size parameter, smaller = more over-dispersion).
+* `--depth-cv CV` / `--depth-block N`: add a regional log-normal coverage bias with coefficient of
+  variation `CV`, shared by blocks of `N` loci (default 50). Unlike per-site noise, it does not
+  average out within windows (mimics GC/mappability bias).
+* `--allele-overdispersion RHO`: make allele read counts at heterozygous sites Beta-Binomial with
+  intra-class correlation `RHO` (mimics reference bias / mapping artefacts).
+* `-q/--qual, -k/--ksfs, -r/--pvar, -a/--panc, -n/--ne, -e/--errdepth, -u/--seed`: same meaning
+  and defaults as the original `simulMpileup.R` options.
+
+### Output
+
+One `<out_prefix>.DP<depth>.mpileup.gz` file per haploid depth, plus a `<out_prefix>.filelist`
+listing the generated basenames (ready to feed into `hmmploidy genolikes` / `hmmploidy run`).
+
+### Example
+
+```Shell
+hmmploidy simulate -p ploidy.file -d 10,20 -l 1000,1000,1000 -o outFile
+```
+
+with `ploidy.file` containing:
 ```Shell
 2x20
 2x10,4x10
 3x20
 ```
-The length of each segment is expressed by the `--loci` parameter below.
-* `-l` or `--loci`: sequence of $K$ number of loci $l_1,l_2,...,l_K$ used in each simulated segment of the genomes.
-* `-d` or `--depth`: vector of haploid depths to simulate. For each depth, a compressed `mpileup` file is created.
-* `-o` or `--out`: output file name (without extension). Default: out 
 
-### Output
+produces `outFile.DP10.mpileup.gz`, `outFile.DP20.mpileup.gz` and `outFile.filelist`.
 
-One `.mpileup.gz` file for each haploid depth, number of individuals $N$, with the name `$OUTNAME.DP$depth.mpileup.gz`.
+## 2. Calculate genotype likelihoods: `hmmploidy genolikes`
 
-### Syntax Example
+Overview: calculate genotype likelihoods from BAM or mpileup input.
 
 ```Shell
-$SOFTWAREPATH/simulationScript.sh -p ploidy.file -d 10,20 -l 1000,1000,1000 -o outFile
+# one BAM per individual, piled up jointly into ONE genolikes file
+hmmploidy genolikes --bamList bams.txt --ref_fasta reference.fa --outName mypop [options]
+
+# or: one or more multi-sample mpileup files (one genolikes file each)
+hmmploidy genolikes names.filelist [options]
 ```
-
-with the file `ploidy.file` containing
-```Shell
-2x20
-2x10,4x10
-3x20
-```
-
-The output will consists of two files: `outFile.DP10.mpileup.gz` and `outFile.DP20.mpileup.gz`
-
-## Calculate genotype likelihoods
-
-Overview: calculate genotype likelihoods
-
-`Genotype_Likelihoods.py names.filelist`
 
 ### Input
 
-* The file `names.filelist`, that contains the prefix of each file (that is, the name of each file including the extension), for example:
-
-```
-file1.mpileup.gz
-file2.mpileup.gz
-file3.mpileup.gz
-```
-
-for the files `file1.mpileup.gz, file2.mpileup.gz, file3.mpileup.gz`. Supported file types are 'bam','mpileup' and 'mpileup.gz' (gzipped mpileup file).
-* `-o` or `--outFolder`: Output folder. Default: the folder of each input files
-* `-i` or `--Inbreeding`: Inbreeding coefficients for each sample accepted as a comma seperated list e.g `0.3,0.2,0.1` alternatively can take in the format `0.2x3,0.4` which is equivilent to `0.2,0.2,0.2,0.4`. All values must be between 0 and 1. Default value is `0xNSAMS`
-* `-p` or `--ploidyFile`: File containing the list of ploidy levels to be used in analysis, that contains one ploidy level per line, for example: 
-```
-2
-4
-5
-```
-
-for diploidy (2), tetraploidy (4) and pentaploidy (5). If not set, default ploidy levels [1, 2, 3, 4, 5, 6] will be used in the analysis.
-* `-d` or `--downsampling`: Fraction of the data to be included included in the calculation of genotype likelihoods and aneuploidy inference. That is for a value `v` in (0,1] for each read there is a `vx100%` chance the base is included in the calculations. this can be used to speed up calculations for high coverage samples. Be careful using this argument for low coverage data. Default: `1`
-* `-m` or `--min_non_major_freq`: Set the minimum frequency of non major alleles for bases to be included in the calculations. Default: `0.2`
-* `-M2` or `--max_minor2_freq`: Set the maximum frequency of third most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
-* `-M3` or `--max_minor3_freq`: Set the maximum frequency of fourth most prolific alleles for bases to be included in the calculations. Used to determine strengh of confidence on bases being biallelic. Default: `0.1`
-* `-dp` or `--min_global_depth`: Set the minimum global depth of a base to be included in calculations. All bases with more than this number of reads, after filtering for other conditions mentioned above, across all bases will be included.
-* `-dpInd` or `--min_ind_depth`: Set the minimum depth of a base for each sample to included those in the calculations. A locus is not considered if one or more samples have depth lower than the minimum. Default: `0`.
-* `-s` or `--random_seed`: Set the random seed to be included in the calculations. If not set, every repeat of analysis will give different results.
-* `-r` or `--ref_fasta`: File name of the reference fasta file. Use this if bam files are being used. e.g TAIR10.fa.
+* `-b`/`--bamList`: file listing one BAM per individual (one per line). All BAMs are piled up
+  **jointly** with `samtools mpileup` (streamed, no intermediate file), so population allele
+  frequencies use every individual. If every BAM is indexed (`samtools index`), the genome is
+  split into `--region_size` bp regions (default 10 Mb) processed in parallel. The output is
+  `<outName>.genolikes.gz`, plus `<outName>.names` with the sample names (usable as
+  `hmmploidy run --nameFile`). Requires `samtools` and `-r`/`--ref_fasta`. A positional list made
+  only of `.bam` files is treated the same way.
+* `names.filelist` (positional): names of multi-sample mpileup files (`.mpileup` or
+  `.mpileup.gz`), one per line; each gives one `<name>.genolikes.gz`.
+* `-O`/`--outName`: output basename for BAM input (default: the list file name without extension).
+* `-t`/`--threads`: worker processes (default `min(8, nr of CPUs)`).
+* `--min_mapq`: minimum mapping quality for BAM input (`samtools mpileup -q`, default `0`).
+* `--mpileup_args`: extra options passed verbatim to `samtools mpileup`, e.g. `"-B -Q 0"`.
+* `--chunk_size`: mpileup lines per work unit (default `20000`).
+* `-o` or `--outFolder`: Output folder. Default: the folder of each input file.
+* `-i` or `--Inbreeding`: accepted for CLI compatibility with the original script (comma separated,
+  e.g. `0.2x3,0.4`); as in the original implementation it is currently not folded into the
+  likelihood model.
+* `-p` or `--ploidyFile`: file with one ploidy level per line to test (default `1,2,3,4,5,6`).
+* `-d` or `--downsampling`: fraction of reads to keep per site (default `1`).
+* `-m` or `--min_non_major_freq` (default `0.2`), `-M2`/`--max_minor2_freq` (default `0.1`),
+  `-M3`/`--max_minor3_freq` (default `0.1`), `-dp`/`--min_global_depth` (default `0`),
+  `-dpInd`/`--min_ind_depth`: same filtering thresholds as the original script. Sites are kept
+  only if every individual has depth `> min_ind_depth`. **The default is now `-1`**, which keeps
+  sites where some individuals have no reads (their genotype likelihoods are then uninformative).
+  The old default `0` dropped every site not covered in all individuals, which removes almost all
+  sites when there are many low-coverage samples.
+* `-q`/`--min_quality_score`: minimum base quality to keep a read (default `1`).
+* `-s` or `--random_seed`: random seed for the downsampling step.
+* `-r` or `--ref_fasta`: reference fasta, required for BAM input.
 
 ### Output
 
-A `.genolikes.gz` file for each prefix in the input file. The columns of the file represent: chromosome name, site number, individual number, ref.allele, site coverage, major allele, minor allele, major allele counts, minor allele counts, genotype likelihoods at ploidy 1 (2 columns), genotype likelihoods at ploidy 2 (3 columns), ..., genotype likelihoods at ploidy 8 (9 columns)
+A `.genolikes.gz` file (per mpileup, or one for a BAM list), tab separated, with columns: chromosome, position, individual
+number, reference allele, site depth, major allele, minor allele, major allele count, minor
+allele count, genotype likelihoods at ploidy 1 (2 columns), ploidy 2 (3 columns), ... up to the
+highest requested ploidy.
 
-### Syntax Example
+### Example
 
 ```Shell
-python3 Genotype_Likelihoods.py names.filelist -p ploidyFile -i 0.1x7,0.15,0.1x2 -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5 -s 1
+hmmploidy genolikes names.filelist -p ploidyFile -d 0.9 -m 0.2 -M2 0.15 -M3 0.1 -dp 5 -s 1
+hmmploidy genolikes --bamList bams.txt -r ref.fa -O mypop --min_mapq 20 -t 16
 ```
 
-## Inference of ploidy levels
+Soft-masked (lowercase) reference bases are handled: reads matching the reference are counted
+whatever the case of the reference base.
 
-Overview: infer ploidy levels of each individual in a `.genolikes` file (uncompressed file from the output of the `Genotype_Likelihoods.py` script) using sequencing coverage and genotype likelihoods.
+## 3. Infer ploidy levels: `hmmploidy run`
 
-````Shell
-Rscript HMMploidy.R fileList=$FILELIST wind=$WIND 
-````
+Overview: infer ploidy levels for each individual in a `.genolikes` file using sequencing depth
+and genotype likelihoods, with a choice of four HMM fitting techniques (see the modelling notes
+above).
+
+```Shell
+hmmploidy run --fileList $FILELIST --wind $WIND --model {overdispersed,negbinom,em,bayesian} [options]
+```
+
 ### Input
 
-* `fileList`: list of base names of files with formats `.genolikes`, uncompressed from the output of `Genotype_Likelihoods.py`. Alternatively, use `file` and write directly the prefix of the desired file that has format `.genolikes`. For example
-```
-file1
-file2
-```
-for the files `file1.genolikes, file2.genolikes`.
-* `wind`: windows size, i.e. nr of loci whose means and genotype likelihoods are summed together
-* `maxPloidy`: max number of ploidy levels (default `6`) 
-* `nameFile`: file with names of all the individuals in the genotype likelihoods file (default: names are ind1, ind2, ...). For example
-```
-Cryptococcus
-Streptococcus
-```
-will be used as names for the first and the second individual of the input file. This will work if the genotype likelihood files have the same number of individuals.
-* `chosenInd`: comma separated indices of individuals to analyze (default: analyzes all individuals). For example 
-`chosenInd=1,2,7` to choose the first, second and seventh individual.
-* `quantileTrim`: comma separated values of 2 quantiles to trim depth values. (default `0,1` = keep all data)
-* `minInd`: min number of individuals with data for which a locus is considered in the analysis (default 1)
-* `eps`: sequencing/mapping error rate (default 0.0005)
-
-Note: 
-
-* if working on simulations, the list of basenames is already given in output by the simulation script.
-* the `.genolikes.gz` files given in output by the `Genotype_Likelihoods.py` script must be gunzipped.
+* `--file`: a single `.genolikes` basename, or `--fileList`: a file listing basenames (one per
+  line). `<basename>.genolikes` and `<basename>.genolikes.gz` are both read directly, and the
+  mpileup file list given to `hmmploidy genolikes` can be reused as is.
+* `--model`: `overdispersed` (default, overdispersion-aware), `negbinom` (classic), `em` (fast Poisson EM), or `bayesian` (PyMC hierarchical model).
+* `--wind`: window size in base pairs; windows without SNPs are merged into a neighbour. Aim for
+  tens of SNPs per window.
+* `--maxPloidy`: max number of candidate ploidy levels (default `6`).
+* `--ploidyList`: comma-separated ploidies actually present as columns in the `.genolikes` file,
+  if different from `1..maxPloidy`.
+* `--nameFile`: file with one individual name per line (default: `ind1, ind2, ...`).
+* `--chosenInd`: comma-separated 1-indexed individuals to analyze (default: all).
+* `--quantileTrim`: two comma-separated quantiles used to trim depth outliers (default `0.02,0.98`).
+* `--SNPtrim`: two comma-separated allele-frequency thresholds used to select SNPs (default `0.1,0.9`).
+* `--minInd`: min number of individuals with data for a locus to be used in the population
+  allele-frequency estimate (default `1`).
+* `--eps`: sequencing/mapping error rate (default `0.0005`).
+* `--truePl`: true ploidy, if known (e.g. from simulations), overlaid on the plot.
+* `-t`/`--threads`: individuals fitted in parallel (default `min(8, nr of CPUs)`).
+* `--noPlot`: skip the per-individual PDF plots (faster for many individuals).
 
 ### Output
 
-For each base name, there are two outputs:
-* a `.pdf` file with inferred ploidy numbers for each individual
-* a `.HMMploidy` file where, for each individual, results are arranged on lines as it follows:
-   * File name and sample name
-   * starting probability vector $\delta$ of inferred ploidy numbers
-   * transition matrix $A$ printed on one line (column by column)
-   * $\alpha$ vector of parameters for the depth distribution
-   * $\beta$ vector of parameters for the depth distributions
-   * final loglikelihood of the model
-   * inferred ploidy numbers of the model
-   * posterior probabilities for the inferred states (column by column)
-   * proportion of posterior probability for each inferred ploidy number
-   * starting locus of each window of SNPs
-   * ending locus of each window of SNPs
-   * inferred ploidy level in each of the windows defined in the two lines above
+For each individual: a `<prefix>.<name>.pdf` plot (inferred ploidy path + posterior support, and
+window-mean depth with the fitted per-state mean), and a `<prefix>.<name>.HMMploidy` text file
+with the fitted `delta`, `trans`, `mu` (plus `haploid_depth`, `depth_shape`,
+`allele_overdispersion_rho` and `error_rate` for the `overdispersed` model, `alpha`/`beta` for
+the `negbinom` model), final
+log-likelihood, per-window inferred ploidy, per-ploidy posterior proportions, and window
+boundaries.
 
-## Application Example: Analyze ploidy numbers from simulations
+### Example
 
-Simulate 5 genomes ina  file called `poliploidyGenome`, with 4 segments having ploidy numbers 2-5-4-2 for all genomes, and simulating two different haploid depths, 3X and 8X. Consider `1000` simulated loci for each segment. Let `SOFTWAREPATHPATH` be the folder containing the scripts of this repository.
-
-Simulate the dataset
 ```Shell
-$SOFTWAREPATHPATH/simulationScript.sh -p ploidy.file -d 3,8 -l 1000,1000,1000,1000 -o poliploidyGenome
+hmmploidy run --fileList poliploidyGenome.filelist --model em --wind 100 --maxPloidy 5 --minInd 2
 ```
-
-with the file `ploidy.file` containing:
-```Shell
-2x5
-5x5
-4x5
-2x5
-```
-
-There are two simulated `.mpileup.gz` files in output: `poliploidyGenome.DP3.mpileup.gz, poliploidyGenome.DP8.mpileup.gz`, and a file containing the list of prefixes for calculating the genotype likelihoods: `poliploidyGenome.filelist`
-
-Calculate genotype likelihoods without applying any filter (see the script options for filtering details):
-```Shell
-python3 $SOFTWAREPATHPATH/Genotype_Likelihoods.py poliploidyGenome.filelist
-```
-
-Run the analysis of ploidy numbers for the two simulated datasets. Use window size 100, analyze all the individuals, consider the max ploidy number being 5, do not trim the data, and use loci where there is data for >=2 individuals
-```Shell
-gunzip *.genolikes.gz #the R script needs gunzipped genolikes files
-Rscript $SOFTWAREPATHPATH/HMMploidy.R  fileList=poliploidyGenome.filelist  maxPloidy=5  wind=100  minInd=2
-```
-
-In output you will find the pdf files `poliploidyGenome.DP4.pdf`,`poliploidyGenome.DP8.pdf` with a fancy plot of the inferred ploidy for each individual and the mean depth of each window. The text output is contained in the files `poliploidyGenome.DP4.HMMploidy`,`poliploidyGenome.DP8.HMMploidy`
 
 ### Notes
-Each `.genolikes` file given in input to `HMMploidy.R` is expected to have only one chromosome. However, in presence of more chromosomes/contigs, the software will automatically analyze the contigs as adjacent in a whole genome fashion. Windows of loci will be done in each chromosome/contig to avoid sharing loci in a window between chromosomes/contigs. Windows will be downsized in chromosomes/contigs not large enough, and chromosomes/contigs without SNPs will be automatically removed from the analysis.
+
+Each `.genolikes` file is expected to contain one or more chromosomes/contigs; contigs are
+analyzed independently, windows never straddle a contig boundary, and contigs without SNPs are
+automatically skipped.
+
+## Application example: end-to-end, all models
+
+```Shell
+hmmploidy simulate -p ploidy.file -d 3,8 -l 1000,1000,1000,1000 -o poliploidyGenome
+# ploidy.file: 2x5 / 5x5 / 4x5 / 2x5
+
+hmmploidy genolikes poliploidyGenome.filelist
+
+for model in overdispersed negbinom em bayesian; do
+    hmmploidy run --fileList poliploidyGenome.filelist --model $model --maxPloidy 5 --wind 100 --minInd 2 --outSuffix $model
+done
+```
+
+See [notebooks/demo_HMMploidy.ipynb](notebooks/demo_HMMploidy.ipynb) for the model explanations,
+a benchmark of all models under different kinds of overdispersion (`hmmploidy.benchmark`),
+speed measurements, and a runnable BAM example.
 

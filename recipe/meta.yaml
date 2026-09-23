@@ -1,0 +1,65 @@
+{% set version = "2.0.0" %}
+
+package:
+  name: hmmploidy
+  version: {{ version }}
+
+source:
+  # Build from the repository checkout (this recipe lives in <repo>/recipe).
+  path: ..
+
+build:
+  noarch: python
+  number: 0
+  script: "{{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation"
+  entry_points:
+    - hmmploidy = hmmploidy.cli:main
+
+requirements:
+  host:
+    - python >=3.9
+    - pip
+    - setuptools >=61.0
+  run:
+    - python >=3.9
+    - numpy >=1.23
+    - scipy >=1.9
+    - pandas >=1.5
+    - matplotlib-base >=3.6
+    - numba >=0.57
+
+test:
+  imports:
+    - hmmploidy
+    - hmmploidy.simulate
+    - hmmploidy.genotype_likelihoods
+    - hmmploidy.data
+    - hmmploidy.hmm
+    - hmmploidy.hmm.negbinom
+    - hmmploidy.hmm.overdispersed
+    - hmmploidy.benchmark
+    - hmmploidy._gl_kernel
+    - hmmploidy.hmm.poisson_em
+    - hmmploidy.run
+  commands:
+    - hmmploidy --help
+
+about:
+  home: https://github.com/samuelesoraggi/HMMploidy
+  license: LGPL-3.0-or-later
+  license_file: LICENSE
+  summary: Genotype-likelihood- and depth-based HMM for inference of ploidy levels
+  description: |
+    HMMploidy infers ploidy levels (and tests for aneuploidy) from low/medium
+    coverage sequencing data, combining read-depth and genotype-likelihood
+    evidence in a Hidden Markov Model. The default `overdispersed` model uses
+    Beta-Binomial allele counts and a Gamma depth emission tied to a shared
+    haploid depth. Alternatives are a classic Negative-Binomial conditional EM, a
+    fast Poisson EM, and a hierarchical Bayesian model (requires the
+    optional `pymc`/`arviz` dependencies, see the `bayesian` extra).
+  doc_url: https://github.com/samuelesoraggi/HMMploidy/blob/main/README.md
+  dev_url: https://github.com/samuelesoraggi/HMMploidy
+
+extra:
+  recipe-maintainers:
+    - samuele-soraggi
